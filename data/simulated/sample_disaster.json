@@ -1,0 +1,39 @@
+{
+  "disasters": [
+    {
+      "id": "flood_001",
+      "type": "flood",
+      "severity": 0.8,
+      "location": {
+        "lat": 28.6139,
+        "lon": 77.2090,
+        "name": "Delhi Central"
+      },
+      "detected_at": "2024-01-15T10:30:00Z",
+      "metadata": {
+        "precipitation": 45.2,
+        "water_level": 2.5,
+        "affected_area": 5.2
+      }
+    },
+    {
+      "id": "fire_001",
+      "type": "fire",
+      "severity": 0.75,
+      "location": {
+        "lat": 28.7041,
+        "lon": 77.1025,
+        "name": "Northern District"
+      },
+      "detected_at": "2024-01-15T11:00:00Z",
+      "metadata": {
+        "temperature": 42.5,
+        "wind_speed": 15.3,
+        "affected_area": 2.1
+      }
+    }
+  ]
+}
+
+
+

@@ -1,0 +1,26 @@
+{
+  "drone": {
+    "max_altitude": 120,
+    "max_speed": 15,
+    "battery_capacity": 100,
+    "battery_drain_rate": 0.1,
+    "camera_resolution": {
+      "width": 1920,
+      "height": 1080
+    },
+    "slam": {
+      "enabled": false,
+      "map_points_threshold": 100,
+      "localization_confidence_threshold": 0.7
+    }
+  },
+  "simulation": {
+    "update_interval_ms": 2000,
+    "telemetry_update_rate": 1,
+    "video_feed_enabled": true
+  },
+  "navigation": {
+    "gps_fallback_to_slam": true,
+    "slam_activation_threshold": 0.5
+  }
+}
