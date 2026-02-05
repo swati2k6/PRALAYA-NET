@@ -3,10 +3,41 @@ import MapView from "../components/MapView";
 import ControlPanel from "../components/ControlPanel";
 import StatusPanel from "../components/StatusPanel";
 import IntelligenceFeed from "../components/IntelligenceFeed";
+import { checkBackendHealth } from "../services/api";
 import "../index.css";
 
 const Dashboard = () => {
   const [systemStatus, setSystemStatus] = useState(null);
+  const [backendOnline, setBackendOnline] = useState(false);
+  const [connectionError, setConnectionError] = useState(null);
+
+  // Check backend health on mount
+  useEffect(() => {
+    const initBackend = async () => {
+      try {
+        const isHealthy = await checkBackendHealth();
+        setBackendOnline(isHealthy);
+        
+        if (!isHealthy) {
+          setConnectionError("Backend offline - waiting for connection...");
+          console.error("[Dashboard] Backend is not responding");
+        } else {
+          setConnectionError(null);
+          console.log("[Dashboard] Backend is online");
+        }
+      } catch (error) {
+        console.error("[Dashboard] Failed to initialize backend:", error);
+        setBackendOnline(false);
+        setConnectionError(error.message);
+      }
+    };
+
+    initBackend();
+    
+    // Check backend health every 30 seconds
+    const healthCheckInterval = setInterval(initBackend, 30000);
+    return () => clearInterval(healthCheckInterval);
+  }, []);
 
   useEffect(() => {
     const fetchStatus = async () => {
@@ -14,25 +45,57 @@ const Dashboard = () => {
         const response = await fetch("http://127.0.0.1:8000/api/trigger/status");
         const data = await response.json();
         setSystemStatus(data);
+        setBackendOnline(true);
+        setConnectionError(null);
       } catch (error) {
-        console.error("Error fetching system status:", error);
+        console.error("[Dashboard] Error fetching system status:", error.message);
+        setBackendOnline(false);
+        setConnectionError("Failed to fetch system status - backend unreachable");
       }
     };
 
-    fetchStatus();
-    const interval = setInterval(fetchStatus, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    if (backendOnline) {
+      fetchStatus();
+      const interval = setInterval(fetchStatus, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [backendOnline]);
 
   return (
     <div className="command-center">
+      {/* Backend Connection Error Banner */}
+      {!backendOnline && (
+        <div style={{
+          backgroundColor: "#ff4444",
+          color: "white",
+          padding: "12px 20px",
+          textAlign: "center",
+          fontWeight: "bold",
+          borderBottom: "2px solid #cc0000",
+          zIndex: 1000
+        }}>
+          🔴 BACKEND OFFLINE: {connectionError || "Unable to connect to backend server at http://127.0.0.1:8000"}
+        </div>
+      )}
+
       <header className="command-header">
         <div className="header-left">
           <h1 className="system-title">PRALAYA-NET</h1>
           <span className="system-subtitle">Unified Disaster Command System</span>
         </div>
         <div className="header-right">
+          {/* Backend Status Indicator */}
           <div className="mode-indicator">
+            <span style={{ marginRight: "15px", display: "flex", alignItems: "center", gap: "5px" }}>
+              <span style={{ 
+                width: "12px", 
+                height: "12px", 
+                borderRadius: "50%", 
+                backgroundColor: backendOnline ? "#00ff00" : "#ff4444",
+                display: "inline-block"
+              }}></span>
+              Backend: {backendOnline ? "ONLINE" : "OFFLINE"}
+            </span>
             <span className="mode-label">SIMULATION MODE</span>
             <span className="mode-status">LIVE DATA READY</span>
           </div>

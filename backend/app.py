@@ -85,6 +85,15 @@ async def global_exception_handler(request, exc):
     )
 
 if __name__ == "__main__":
+    print("\n" + "="*70)
+    print("🚀 PRALAYA-NET Backend Starting...")
+    print("="*70)
+    print(f"📍 Server: http://0.0.0.0:8000")
+    print(f"📍 Local:  http://127.0.0.1:8000")
+    print(f"📍 Docs:   http://127.0.0.1:8000/docs")
+    print(f"📍 Health: http://127.0.0.1:8000/api/health")
+    print("="*70 + "\n")
+    
     uvicorn.run(
         "app:app",
         host="0.0.0.0",

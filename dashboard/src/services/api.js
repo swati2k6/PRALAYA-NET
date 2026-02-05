@@ -1,10 +1,78 @@
 // dashboard/src/services/api.js
 
-const API_BASE = "";
+// Backend URL configuration - supports both development and production
+const getBackendUrl = () => {
+  // Try environment variable first
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl) {
+    console.log("[API] Using VITE_API_URL:", envUrl);
+    return envUrl;
+  }
+
+  // Try React App variable (for compatibility)
+  const reactEnvUrl = window.REACT_APP_API_URL;
+  if (reactEnvUrl) {
+    console.log("[API] Using REACT_APP_API_URL:", reactEnvUrl);
+    return reactEnvUrl;
+  }
+
+  // Default to localhost for development
+  const defaultUrl = "http://127.0.0.1:8000";
+  console.log("[API] Using default backend URL:", defaultUrl);
+  return defaultUrl;
+};
+
+const API_BASE = getBackendUrl();
+console.log("[API] Backend base URL configured as:", API_BASE);
+
+// Backend health status cache
+let backendHealthy = null;
+let lastHealthCheck = 0;
+const HEALTH_CHECK_INTERVAL = 30000; // Check every 30 seconds
+
+/**
+ * Check if backend is healthy
+ * @returns {Promise<boolean>}
+ */
+export async function checkBackendHealth() {
+  const now = Date.now();
+  
+  // Return cached result if recent
+  if (lastHealthCheck && now - lastHealthCheck < HEALTH_CHECK_INTERVAL && backendHealthy !== null) {
+    return backendHealthy;
+  }
+
+  try {
+    console.log("[API] Checking backend health...");
+    const response = await fetch(`${API_BASE}/api/health`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      timeout: 5000,
+    });
+
+    backendHealthy = response.ok;
+    lastHealthCheck = now;
+    
+    if (backendHealthy) {
+      console.log("[API] ✅ Backend is healthy");
+    } else {
+      console.error("[API] ❌ Backend health check failed:", response.status);
+    }
+    
+    return backendHealthy;
+  } catch (error) {
+    console.error("[API] ❌ Backend unreachable:", error.message);
+    backendHealthy = false;
+    lastHealthCheck = now;
+    return false;
+  }
+}
 
 // Helper function for API calls with error handling
 async function apiCall(url, options = {}) {
   try {
+    console.log(`[API] Calling ${options.method || "GET"} ${url}`);
+    
     const response = await fetch(url, {
       ...options,
       headers: {
@@ -15,13 +83,21 @@ async function apiCall(url, options = {}) {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: response.statusText }));
+      console.error(`[API] Error response: ${response.status}`, errorData);
       throw new Error(errorData.error || errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
     }
 
-    return await response.json();
+    const data = await response.json();
+    console.log(`[API] ✅ Success: ${url}`);
+    return data;
   } catch (error) {
-    if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
-      throw new Error("Cannot connect to backend server. Please ensure the backend is running on http://127.0.0.1:8000");
+    console.error(`[API] ❌ Request failed:`, error.message);
+    
+    if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError") || error.message.includes("ERR_")) {
+      const backendUrl = API_BASE;
+      const message = `Backend connection failed. Ensure backend is running at ${backendUrl}`;
+      console.error(`[API] ${message}`);
+      throw new Error(message);
     }
     throw error;
   }

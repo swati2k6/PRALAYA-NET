@@ -84,20 +84,30 @@ pip install -r requirements.txt
 cp ../.env.example .env
 # Edit .env with your API_KEY from https://api.data.gov/
 
-python -m uvicorn app:app --reload --port 8000
+# Start backend with proper host binding
+python -m uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-✅ Backend: http://localhost:8000/docs
+✅ Backend ready at: http://127.0.0.1:8000
+✅ API Docs: http://127.0.0.1:8000/docs
+✅ Health check: http://127.0.0.1:8000/api/health
 
 ### Step 2: Dashboard Setup
 
 ```bash
 cd dashboard
 npm install
+
+# Configure backend URL (if needed)
+cp .env.example .env.local
+# Default: VITE_API_URL=http://127.0.0.1:8000
+
+# Start frontend dev server
 npm run dev
 ```
 
-✅ Dashboard: http://localhost:5174
+✅ Dashboard: http://localhost:5173
+✅ You should see "Backend: ONLINE" in the header
 
 ### Step 3: ESP32 Setup (Optional)
 
@@ -310,7 +320,7 @@ PRALAYA-NET/
 
 ```bash
 # Terminal 1: Backend with hot-reload
-cd backend && python -m uvicorn app:app --reload
+cd backend && python -m uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 
 # Terminal 2: Frontend with HMR
 cd dashboard && npm run dev
@@ -320,9 +330,10 @@ curl http://localhost:8000/api/health
 ```
 
 **Current Status** ✅
-- Backend: http://localhost:8000/docs (Swagger API documentation)
-- Frontend: http://localhost:5174
-- Health Check: http://localhost:8000/api/health
+- Backend: http://127.0.0.1:8000/docs (Swagger API documentation)
+- Frontend: http://localhost:5173
+- Health Check: http://127.0.0.1:8000/api/health
+- Frontend shows "Backend: ONLINE" indicator in header
 
 ### Testing
 
@@ -348,22 +359,46 @@ curl -X POST http://localhost:8000/api/trigger/inject \
 
 ## 🐛 Troubleshooting
 
-### Backend Issues
+### "ERR_CONNECTION_REFUSED" - Backend Offline
 
-```bash
-# Check Python version
-python --version  # Must be 3.8+
+**Issue**: Frontend shows "Backend OFFLINE" and cannot connect
 
-# Check if port 8000 is available
-netstat -ano | findstr :8000  # Windows
-lsof -i :8000                 # macOS/Linux
+**Solutions**:
 
-# Reinstall dependencies
-pip install --force-reinstall -r requirements.txt
+1. **Check if backend is running**
+   ```bash
+   # Check port 8000 is listening
+   netstat -ano | findstr :8000  # Windows
+   lsof -i :8000                  # macOS/Linux
+   ```
 
-# Test backend directly
-python -m uvicorn app:app --reload --port 8000
-```
+2. **Start backend with correct command**
+   ```bash
+   cd backend
+   python -m uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+   ```
+   
+   **Important**: Use `--host 0.0.0.0` to ensure all local IPs can connect
+   - ✅ Correct: `http://127.0.0.1:8000` 
+   - ✅ Correct: `http://localhost:8000`
+   - ✅ Correct: `http://192.168.1.x:8000`
+
+3. **Verify backend is responsive**
+   ```bash
+   curl http://127.0.0.1:8000/api/health
+   # Should return: {"status":"healthy","components":{...}}
+   ```
+
+4. **Check frontend environment variable**
+   ```bash
+   # dashboard/.env.local should contain:
+   VITE_API_URL=http://127.0.0.1:8000
+   ```
+
+5. **Check browser console for logs**
+   - Open DevTools (F12)
+   - Look for `[API]` prefixed messages
+   - Check Network tab for blocked requests
 
 ### Middleware Notes (Development)
 
