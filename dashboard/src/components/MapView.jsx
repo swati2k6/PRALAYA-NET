@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, Circle } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMapEvents } from "react-leaflet";
 import { fetchDisasterZones, getSystemStatus, getDroneStatus } from "../services/api";
+import { fetchInfrastructureLayer } from "../services/geoIntelligenceService";
+import RiskPopup from "./RiskPopup";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
@@ -17,6 +19,11 @@ const MapView = () => {
   const [infrastructure, setInfrastructure] = useState([]);
   const [drones, setDrones] = useState([]);
   const [center] = useState([28.6139, 77.2090]);
+
+  // Geo-Intelligence State
+  const [activePopup, setActivePopup] = useState(null);
+  const [showIntelLayer, setShowIntelLayer] = useState(false);
+  const [intelMarkers, setIntelMarkers] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -35,13 +42,13 @@ const MapView = () => {
             return { drones: [] };
           })
         ]);
-        
+
         setZones(zonesData.zones || []);
-        
+
         if (statusData.cascading_analysis?.graph?.nodes) {
           setInfrastructure(statusData.cascading_analysis.graph.nodes);
         }
-        
+
         setDrones(droneData.drones || []);
       } catch (error) {
         console.error("Error fetching map data:", error);
@@ -52,6 +59,27 @@ const MapView = () => {
     const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  // Fetch Intel Layer when enabled
+  useEffect(() => {
+    if (showIntelLayer) {
+      fetchInfrastructureLayer(center[0], center[1]).then(setIntelMarkers);
+    } else {
+      setIntelMarkers([]);
+    }
+  }, [showIntelLayer, center]);
+
+  const MapEvents = () => {
+    useMapEvents({
+      click(e) {
+        setActivePopup({
+          lat: e.latlng.lat,
+          lon: e.latlng.lng
+        });
+      },
+    });
+    return null;
+  };
 
   const getDisasterColor = (type) => {
     const colors = {
@@ -72,11 +100,20 @@ const MapView = () => {
   };
 
   return (
-    <div className="map-container">
+    <div className="map-container" style={{ position: 'relative' }}>
       <div className="map-header">
         <h2 className="map-title">Geospatial Situational Awareness</h2>
       </div>
-      
+
+      <div className="infrastructure-toggle">
+        <span className="toggle-label">Infrastructure Intelligence</span>
+        <input
+          type="checkbox"
+          checked={showIntelLayer}
+          onChange={(e) => setShowIntelLayer(e.target.checked)}
+        />
+      </div>
+
       <MapContainer
         center={center}
         zoom={12}
@@ -87,7 +124,16 @@ const MapView = () => {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        
+
+        <MapEvents />
+
+        {/* Global Geo-Intelligence Popup */}
+        {activePopup && (
+          <Popup position={[activePopup.lat, activePopup.lon]} onClose={() => setActivePopup(null)}>
+            <RiskPopup lat={activePopup.lat} lon={activePopup.lon} />
+          </Popup>
+        )}
+
         {/* Disaster Zones */}
         {zones.map((zone) => (
           <Circle
@@ -147,16 +193,41 @@ const MapView = () => {
           </Marker>
         ))}
 
+        {/* Intelligence Layer Markers */}
+        {intelMarkers.map((marker) => (
+          <Marker
+            key={marker.id}
+            position={[marker.lat, marker.lon]}
+            icon={L.divIcon({
+              className: "intel-marker",
+              html: `<div style="
+                background: #5a7aa5;
+                width: 12px;
+                height: 12px;
+                transform: rotate(45deg);
+                border: 1px solid white;
+              "></div>`,
+              iconSize: [12, 12],
+            })}
+          >
+            <Popup>
+              <div style={{ fontSize: '10px', fontWeight: 'bold' }}>
+                INTEL: {marker.name}
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+
         {/* Drone Positions */}
         {drones.map((drone) => {
           if (!drone.location) return null;
-          
+
           return (
             <Marker
               key={drone.id}
               position={[drone.location.lat, drone.location.lon]}
               icon={L.divIcon({
-                className: "infrastructure-marker",
+                className: "drone-marker",
                 html: `<div style="
                   width: 0;
                   height: 0;
