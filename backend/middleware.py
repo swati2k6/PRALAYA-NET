@@ -2,24 +2,27 @@
 Middleware for rate limiting, input validation, and security
 """
 
-from fastapi import Request, HTTPException
-from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 import time
 from collections import defaultdict
 from datetime import datetime, timedelta
 import re
+import json
 
-class RateLimitMiddleware:
+class RateLimitMiddleware(BaseHTTPMiddleware):
     """
     Simple rate limiting middleware
     Limits requests per IP address
     """
     
-    def __init__(self, requests_per_minute: int = 60):
+    def __init__(self, app, requests_per_minute: int = 60):
+        super().__init__(app)
         self.requests_per_minute = requests_per_minute
         self.request_times = defaultdict(list)
     
-    async def __call__(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next):
         # Get client IP
         client_ip = request.client.host if request.client else "unknown"
         
@@ -58,7 +61,7 @@ class RateLimitMiddleware:
         return response
 
 
-class InputValidationMiddleware:
+class InputValidationMiddleware(BaseHTTPMiddleware):
     """
     Validate request inputs for security and correctness
     """
@@ -71,7 +74,7 @@ class InputValidationMiddleware:
         "lon_range": (-180, 180)
     }
     
-    async def __call__(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next):
         # Skip validation for GET requests
         if request.method == "GET":
             response = await call_next(request)
@@ -82,7 +85,6 @@ class InputValidationMiddleware:
             body = await request.body()
             
             if body:
-                import json
                 data = json.loads(body)
                 
                 # Validate disaster injection endpoints
@@ -144,12 +146,12 @@ class InputValidationMiddleware:
                     raise ValueError(f"Longitude must be between {lon_min} and {lon_max}")
 
 
-class SecurityHeadersMiddleware:
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """
     Add security headers to all responses
     """
     
-    async def __call__(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
         
         # Add security headers
@@ -162,12 +164,12 @@ class SecurityHeadersMiddleware:
         return response
 
 
-class RequestLoggingMiddleware:
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """
     Log all incoming requests for monitoring
     """
     
-    async def __call__(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next):
         # Log request
         start_time = time.time()
         

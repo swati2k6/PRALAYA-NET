@@ -16,14 +16,12 @@ from api.satellite_api import router as satellite_router
 from api.alerts_api import router as alerts_router
 from api.risk_alert_api import router as risk_alert_router
 from config import APP_NAME, VERSION, CORS_ORIGINS
-
-# Import middleware (but we'll add them selectively)
-# from middleware import (
-#     RateLimitMiddleware,
-#     InputValidationMiddleware,
-#     SecurityHeadersMiddleware,
-#     RequestLoggingMiddleware
-# )
+from middleware import (
+    RateLimitMiddleware,
+    InputValidationMiddleware,
+    SecurityHeadersMiddleware,
+    RequestLoggingMiddleware
+)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -35,11 +33,10 @@ app = FastAPI(
 )
 
 # Security & Performance Middleware Stack (order matters)
-# Temporarily disabled - will re-enable after basic testing
-# app.add_middleware(RequestLoggingMiddleware)
-# app.add_middleware(SecurityHeadersMiddleware)
-# app.add_middleware(InputValidationMiddleware)
-# app.add_middleware(RateLimitMiddleware, requests_per_minute=100)
+app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(InputValidationMiddleware)
+app.add_middleware(RateLimitMiddleware, requests_per_minute=100)
 
 # CORS Middleware
 app.add_middleware(
