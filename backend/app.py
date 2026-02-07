@@ -46,7 +46,9 @@ from api.stability_index_api import router as stability_index_router
 from services.decision_explainability_engine import decision_explainability_engine
 from services.replay_engine import replay_engine
 from services.stability_index_service import stability_index_service
+from services.enhanced_stability_index_service import enhanced_stability_index_service
 from services.disaster_simulation_loop import disaster_simulation_loop
+from services.real_data_ingestion import real_data_ingestion
 from websocket_manager import ws_manager
 from config import APP_NAME, VERSION, CORS_ORIGINS, PORT as CONFIG_PORT
 from middleware import (
@@ -167,7 +169,9 @@ async def startup_event():
     # Start background services
     print("🔄 Starting background services...")
     asyncio.create_task(disaster_simulation_loop.start_simulation())
-    print("✅ Disaster simulation loop started")
+    asyncio.create_task(enhanced_stability_index_service.start_enhanced_stability_index_updates())
+    asyncio.create_task(real_data_ingestion.start_real_data_ingestion())
+    print("✅ Enhanced services started")
     
     print("\n" + "═"*70)
     print("🎉 BACKEND STARTUP COMPLETE")
@@ -274,6 +278,94 @@ def health_check():
             "orchestration": "ready"
         }
     }
+
+@app.get("/api/fallback-mode")
+async def enable_fallback_mode():
+    """Enable fallback mode using cached historical data"""
+    try:
+        # Get cached data from real data ingestion
+        cached_data = await real_data_ingestion.get_cached_data()
+        
+        fallback_status = {
+            'mode': 'historical_assisted',
+            'enabled': True,
+            'data_sources': cached_data.get('sources', ['historical_cache']),
+            'last_updated': cached_data.get('last_updated', datetime.datetime.now().isoformat()),
+            'message': 'Historical-Assisted Prediction Mode Active'
+        }
+        
+        return JSONResponse(content=fallback_status)
+        
+    except Exception as e:
+        return JSONResponse(
+            content={'error': f'Failed to enable fallback mode: {str(e)}'},
+            status_code=500
+        )
+
+@app.get("/api/system-status")
+async def get_system_status():
+    """Get comprehensive system status including fallback mode"""
+    try:
+        # Check if real-time APIs are responding
+        real_time_status = await check_real_time_apis()
+        
+        # Get cached data availability
+        cached_data = await real_data_ingestion.get_cached_data()
+        
+        system_status = {
+            'backend_status': 'online',
+            'real_time_apis': real_time_status,
+            'fallback_mode': not real_time_status and cached_data.get('events'),
+            'data_sources': {
+                'real_time': real_time_status['sources'] if real_time_status else [],
+                'cached': cached_data.get('sources', []) if cached_data else []
+            },
+            'services': {
+                'stability_index': 'enhanced' if real_time_status else 'basic',
+                'data_ingestion': 'active' if real_time_status else 'cached_only',
+                'prediction_engine': 'enhanced' if real_time_status else 'basic'
+            },
+            'timestamp': datetime.datetime.now().isoformat()
+        }
+        
+        return JSONResponse(content=system_status)
+        
+    except Exception as e:
+        return JSONResponse(
+            content={'error': f'Failed to get system status: {str(e)}'},
+            status_code=500
+        )
+
+async def check_real_time_apis():
+    """Check if real-time APIs are responding"""
+    try:
+        # Test NASA FIRMS API
+        async with aiohttp.ClientSession() as session:
+            async with session.get("https://firms.modaps.eosdis.nasa.gov/api/area/csv", timeout=5) as response:
+                nasa_status = response.status == 200
+        
+        # Test USGS Earthquake API
+        async with aiohttp.ClientSession() as session:
+            async with session.get("https://earthquake.usgs.gov/fdsnws/event/1/query", timeout=5) as response:
+                usgs_status = response.status == 200
+        
+        return {
+            'status': 'online' if nasa_status and usgs_status else 'limited',
+            'sources': {
+                'nasa_firms': 'online' if nasa_status else 'offline',
+                'usgs_earthquake': 'online' if usgs_status else 'offline'
+            }
+        }
+        
+    except Exception as e:
+        return {
+            'status': 'offline',
+            'sources': {
+                'nasa_firms': 'error',
+                'usgs_earthquake': 'error'
+            },
+            'error': str(e)
+        }
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):

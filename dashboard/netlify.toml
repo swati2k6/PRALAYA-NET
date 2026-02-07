@@ -1,0 +1,34 @@
+# PRALAYA-NET Netlify Configuration
+
+[build]
+  # Build command
+  command = "npm run build"
+  
+  # Build directory
+  publish = "dist"
+  
+  # Base directory
+  base = "/"
+  
+  # Node.js version
+  node_version = "18"
+
+[build.environment]
+  # Production API URL - Update this to your deployed backend URL
+  REACT_APP_API_URL = "https://pralaya-net-backend.onrender.com"
+  VITE_API_URL = "https://pralaya-net-backend.onrender.com"
+  VITE_WS_URL = "wss://pralaya-net-backend.onrender.com"
+
+  # Build mode
+  VITE_DEV_MODE = "false"
+  VITE_DEBUG = "false"
+
+[[redirects]]
+  # Redirect all routes to the main app
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[context.production]
+  # Production-specific settings
+  command = "npm run build && cp _redirects /dist/"

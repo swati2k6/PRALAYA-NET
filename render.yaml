@@ -1,0 +1,29 @@
+services:
+  # Production Web Service
+  type: web
+  name: pralaya-net-backend
+  env: python
+  buildCommand: pip install -r requirements_simple.txt && python main.py
+  startCommand: python main.py
+  
+  # Environment variables
+  environment:
+    - PYTHON_VERSION=3.11
+    - PORT=10000
+    - HOST=0.0.0.0
+
+# Render Configuration
+  plan: starter
+  region: oregon
+  healthCheckPath: /health
+  autoDeploy: true
+
+# Build Configuration
+build:
+  dockerfilePath: ./Dockerfile
+
+# Resource Limits
+resources:
+  units: 1
+  memory: 512Mi
+  cpu: 0.5

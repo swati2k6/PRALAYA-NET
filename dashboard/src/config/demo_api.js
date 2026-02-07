@@ -1,25 +1,33 @@
 /**
- * API Configuration for PRALAYA-NET Frontend
- * Automatically detects environment and sets appropriate API URL
+ * PRALAYA-NET Demo API Configuration
+ * Uses process.env.REACT_APP_API_URL with fallback to demo mode
  */
 
-// Get API URL from environment with fallback chain
-const API_URL = import.meta.env.VITE_API_URL || 
+// Get API URL from environment with multiple fallbacks
+const API_URL = process.env.REACT_APP_API_URL || 
+                 import.meta.env.VITE_API_URL || 
                  import.meta.env.REACT_APP_API_URL || 
                  'http://127.0.0.1:8000';
 
 // WebSocket URL (same as API but with ws protocol)
 const WS_URL = API_URL.replace('http://', 'ws://').replace('https://', 'wss://');
 
-// API endpoints - simplified for reliability
+// Demo API endpoints - simplified for hackathon
 export const API_ENDPOINTS = {
   // Health and System
-  HEALTH: `${API_URL}/api/health`,
-  SYSTEM_STATUS: `${API_URL}/api/system-status`,
+  HEALTH: `${API_URL}/health`,
+  API_HEALTH: `${API_URL}/api/health`,
+  DEMO_STATUS: `${API_URL}/demo/status`,
   
   // Core functionality
-  RISK_PREDICT: `${API_URL}/api/risk/predict`,
+  RISK_PREDICT: `${API_URL}/risk/predict`,
+  API_RISK_PREDICT: `${API_URL}/api/risk/predict`,
   STABILITY_CURRENT: `${API_URL}/api/stability/current`,
+  
+  // Demo endpoints
+  ALERTS_ACTIVE: `${API_URL}/api/alerts/active`,
+  TIMELINE_EVENTS: `${API_URL}/api/timeline/events`,
+  SYSTEM_STATUS: `${API_URL}/api/system/status`,
   
   // Documentation
   DOCS: `${API_URL}/docs`
@@ -38,11 +46,12 @@ export const WS_ENDPOINTS = {
 export const CONFIG = {
   API_URL,
   WS_URL,
-  RECONNECT_INTERVAL: 5000, // 5 seconds
+  RECONNECT_INTERVAL: 3000, // 3 seconds
   CONNECTION_TIMEOUT: 10000, // 10 seconds
   MAX_RECONNECT_ATTEMPTS: 5,
-  UPDATE_INTERVAL: 5000, // 5 seconds for polling fallback
-  HEALTH_CHECK_INTERVAL: 5000 // 5 seconds
+  UPDATE_INTERVAL: 5000, // 5 seconds for auto-refresh
+  HEALTH_CHECK_INTERVAL: 5000, // 5 seconds
+  DEMO_MODE: true // Always use demo mode for hackathon
 };
 
 // Export default API URL for backward compatibility

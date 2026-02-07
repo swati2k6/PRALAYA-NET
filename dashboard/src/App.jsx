@@ -1,7 +1,9 @@
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import CommandCenter from "./components/CommandCenter";
-import EnhancedCommandCenter from "./components/EnhancedCommandCenter";
+import EnhancedCommandCenter from "./components/EnhancedCommandCenterFixed";
+import ReliableCommandCenter from "./components/ReliableCommandCenter";
+import DemoCommandCenter from "./components/DemoCommandCenter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import "./index.css";
 
@@ -32,9 +34,15 @@ function App() {
                   </Link>
                   <Link
                     to="/enhanced-command-center"
-                    className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium bg-green-600"
+                    className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
                   >
                     Enhanced CC
+                  </Link>
+                  <Link
+                    to="/demo-command-center"
+                    className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium bg-red-600"
+                  >
+                    🎯 DEMO CC
                   </Link>
                 </div>
               </div>
@@ -46,6 +54,8 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/command-center" element={<CommandCenter />} />
             <Route path="/enhanced-command-center" element={<EnhancedCommandCenter />} />
+            <Route path="/reliable-command-center" element={<ReliableCommandCenter />} />
+            <Route path="/demo-command-center" element={<DemoCommandCenter />} />
           </Routes>
         </div>
       </ErrorBoundary>

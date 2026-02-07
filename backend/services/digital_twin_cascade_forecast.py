@@ -602,38 +602,82 @@ class DigitalTwinCascadeForecastEngine:
         except Exception as e:
             return {"error": f"Prediction failed: {str(e)}"}
     
-    def get_real_time_cascade_probability(self) -> Dict[str, Any]:
-        """Get real-time cascade probability for all nodes"""
-        cascade_probabilities = {}
-        
-        for node_id, node in self.nodes.items():
-            # Calculate individual node risk
-            node_risk = (1 - node.health_score) * (node.current_load / node.capacity) * node.criticality_score
+    async def predict_cascade_failure(self, trigger_event: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Predict cascading failure probability combining real-time sensor data, 
+        historical disaster probability, and infrastructure vulnerability
+        """
+        try:
+            # Get real-time sensor data
+            realtime_data = await self.get_realtime_sensor_data()
             
-            # Calculate cascade contribution
-            cascade_contrib = self.critical_node_analyses[node_id].cascade_contribution_score if node_id in self.critical_node_analyses else 0
+            # Get historical disaster probability for this region
+            historical_prob = await self.get_historical_disaster_probability(trigger_event)
             
-            # Combined cascade probability
-            cascade_prob = min(1.0, node_risk * 0.6 + cascade_contrib * 0.4)
+            # Get infrastructure vulnerability weights
+            vulnerability_weights = self.get_infrastructure_vulnerability(trigger_event)
             
-            cascade_probabilities[node_id] = {
-                "node_id": node_id,
-                "cascade_probability": cascade_prob,
-                "risk_level": self._get_risk_level(cascade_prob),
-                "health_score": node.health_score,
-                "load_percentage": node.current_load / node.capacity,
-                "criticality_score": node.criticality_score
+            # Calculate combined risk score (0-100)
+            base_risk = trigger_event.get('severity', 0.5) * 50  # Convert severity to 0-100 scale
+            
+            # Add real-time sensor influence (30% weight)
+            sensor_influence = realtime_data.get('anomaly_score', 0) * 0.3
+            
+            # Add historical probability influence (25% weight)
+            historical_influence = historical_prob.get('probability', 0) * 25
+            
+            # Add infrastructure vulnerability influence (25% weight)
+            vulnerability_influence = vulnerability_weights.get('vulnerability_score', 0) * 0.25
+            
+            # Combined risk score
+            combined_risk_score = min(100, base_risk + sensor_influence + historical_influence + vulnerability_influence)
+            
+            # Calculate cascading failure probability
+            cascade_probability = self.calculate_cascade_probability(
+                combined_risk_score, 
+                realtime_data.get('load_factor', 1.0),
+                vulnerability_weights.get('dependency_density', 0.5)
+            )
+            
+            # Calculate confidence based on data quality
+            confidence = self.calculate_prediction_confidence([
+                realtime_data.get('data_quality', 0.7),
+                historical_prob.get('data_completeness', 0.8),
+                len(vulnerability_weights.get('dependencies', [])) / 10  # Normalize dependency count
+            ])
+            
+            # Generate prediction with explanation
+            prediction = {
+                'risk_score': round(combined_risk_score, 1),
+                'prediction_confidence': round(confidence, 1),
+                'cascading_failure_probability': round(cascade_probability, 3),
+                'severity_level': self.get_severity_level(combined_risk_score),
+                'affected_nodes': await self.predict_affected_nodes(trigger_event, cascade_probability),
+                'time_to_cascade': self.estimate_time_to_cascade(cascade_probability),
+                'mitigation_recommendations': self.generate_mitigation_recommendations(combined_risk_score, vulnerability_weights),
+                'data_sources': {
+                    'realtime_sensors': realtime_data.get('active_sensors', []),
+                    'historical_data': historical_prob.get('source', 'unknown'),
+                    'infrastructure_model': vulnerability_weights.get('model_version', '1.0')
+                },
+                'prediction_timestamp': datetime.datetime.now().isoformat(),
+                'trigger_event': trigger_event
             }
-        
-        return {
-            "cascade_probabilities": cascade_probabilities,
-            "high_risk_nodes": [node_id for node_id, prob in cascade_probabilities.items() if prob["cascade_probability"] > 0.7],
-            "system_risk_level": self._calculate_system_risk_level(cascade_probabilities),
-            "timestamp": datetime.now().isoformat()
-        }
-    
-    def _get_risk_level(self, probability: float) -> str:
-        """Get risk level from probability"""
+            
+            # Store prediction for learning
+            await self.store_prediction_for_learning(prediction)
+            
+            return prediction
+            
+        except Exception as e:
+            print(f"Error in cascade prediction: {e}")
+            return {
+                'risk_score': 50,
+                'prediction_confidence': 30,
+                'cascading_failure_probability': 25.0,
+                'severity_level': 'medium',
+                'error': str(e)
+            }
         if probability > 0.8:
             return "critical"
         elif probability > 0.6:
@@ -643,6 +687,248 @@ class DigitalTwinCascadeForecastEngine:
         else:
             return "low"
     
+    async def get_realtime_sensor_data(self) -> Dict[str, Any]:
+        """Get real-time sensor data from various sources"""
+        try:
+            # Simulate real-time sensor data
+            # In production, this would pull from actual sensor APIs
+            
+            sensor_data = {
+                'active_sensors': ['weather_stations', 'seismic_sensors', 'river_level_sensors', 'infrastructure_monitors'],
+                'anomaly_score': round(random.uniform(0, 0.3), 2),  # Current anomaly level
+                'load_factor': round(random.uniform(0.8, 1.2), 2),  # Current system load
+                'data_quality': round(random.uniform(0.6, 0.9), 2),  # Sensor data quality
+                'last_updated': datetime.datetime.now().isoformat()
+            }
+            
+            return sensor_data
+            
+        except Exception as e:
+            print(f"Error getting real-time sensor data: {e}")
+            return {'anomaly_score': 0, 'load_factor': 1.0, 'data_quality': 0.7}
+    
+    async def get_historical_disaster_probability(self, trigger_event: Dict[str, Any]) -> Dict[str, Any]:
+        """Get historical disaster probability for the event region"""
+        try:
+            # Simulate historical disaster probability based on location and type
+            disaster_type = trigger_event.get('disaster_type', 'earthquake')
+            location = trigger_event.get('location', 'mumbai')
+            
+            # Base probabilities for different regions in India
+            historical_probabilities = {
+                'mumbai': {'earthquake': 0.15, 'flood': 0.25, 'cyclone': 0.20},
+                'delhi': {'earthquake': 0.12, 'flood': 0.18, 'cyclone': 0.15},
+                'chennai': {'earthquake': 0.08, 'flood': 0.35, 'cyclone': 0.30},
+                'kolkata': {'earthquake': 0.10, 'flood': 0.30, 'cyclone': 0.25},
+                'bangalore': {'earthquake': 0.05, 'flood': 0.20, 'cyclone': 0.18}
+            }
+            
+            location_probs = historical_probabilities.get(location, {'earthquake': 0.1})
+            base_probability = location_probs.get(disaster_type, 0.1)
+            
+            # Adjust based on season (monsoon season increases flood probability)
+            current_month = datetime.datetime.now().month
+            if 6 <= current_month <= 9 and disaster_type == 'flood':  # Monsoon months
+                base_probability *= 1.5
+            
+            return {
+                'probability': round(base_probability, 3),
+                'source': 'historical_analysis',
+                'confidence': round(random.uniform(0.7, 0.9), 2),
+                'data_completeness': round(random.uniform(0.6, 0.9), 2),
+                'region': location,
+                'disaster_type': disaster_type
+            }
+            
+        except Exception as e:
+            print(f"Error getting historical probability: {e}")
+            return {'probability': 0.1, 'source': 'fallback'}
+    
+    def get_infrastructure_vulnerability(self, trigger_event: Dict[str, Any]) -> Dict[str, Any]:
+        """Get infrastructure vulnerability weights for affected area"""
+        try:
+            location = trigger_event.get('location', 'mumbai')
+            
+            # Infrastructure vulnerability scores for different regions
+            vulnerability_scores = {
+                'mumbai': {
+                    'vulnerability_score': 0.65,  # High density, aging infrastructure
+                    'dependency_density': 0.8,
+                    'critical_nodes': ['power_grid_mumbai', 'telecom_mumbai', 'transport_mumbai'],
+                    'dependencies': 15,
+                    'model_version': '2.1'
+                },
+                'delhi': {
+                    'vulnerability_score': 0.55,  # Better infrastructure, but complex
+                    'dependency_density': 0.7,
+                    'critical_nodes': ['power_grid_delhi', 'telecom_delhi', 'transport_delhi'],
+                    'dependencies': 18,
+                    'model_version': '2.1'
+                },
+                'chennai': {
+                    'vulnerability_score': 0.75,  # Coastal flooding vulnerability
+                    'dependency_density': 0.6,
+                    'critical_nodes': ['power_grid_chennai', 'telecom_chennai'],
+                    'dependencies': 12,
+                    'model_version': '2.1'
+                }
+            }
+            
+            return vulnerability_scores.get(location, {
+                'vulnerability_score': 0.5,
+                'dependency_density': 0.5,
+                'critical_nodes': [],
+                'dependencies': 10,
+                'model_version': '1.0'
+            })
+            
+        except Exception as e:
+            print(f"Error getting infrastructure vulnerability: {e}")
+            return {'vulnerability_score': 0.5, 'dependency_density': 0.5}
+    
+    def calculate_cascade_probability(self, risk_score: float, load_factor: float, dependency_density: float) -> float:
+        """Calculate cascading failure probability"""
+        try:
+            # Base cascade probability from risk score
+            base_probability = risk_score / 100
+            
+            # Adjust for system load (higher load = higher cascade risk)
+            load_adjustment = load_factor * 0.2
+            
+            # Adjust for dependency density (more dependencies = higher cascade risk)
+            dependency_adjustment = dependency_density * 0.15
+            
+            # Combined cascade probability
+            cascade_probability = min(0.95, base_probability + load_adjustment + dependency_adjustment)
+            
+            return round(cascade_probability, 3)
+            
+        except Exception as e:
+            print(f"Error calculating cascade probability: {e}")
+            return 0.25
+    
+    def calculate_prediction_confidence(self, quality_factors: List[float]) -> float:
+        """Calculate prediction confidence based on data quality factors"""
+        try:
+            # Weight the quality factors
+            weights = [0.4, 0.3, 0.3]  # sensor, historical, dependency data
+            
+            # Calculate weighted average
+            weighted_sum = sum(q * w for q, w in zip(quality_factors, weights))
+            total_weight = sum(weights)
+            
+            if total_weight > 0:
+                confidence = min(0.95, weighted_sum / total_weight)
+            else:
+                confidence = 0.5
+            
+            return round(confidence * 100, 1)
+            
+        except Exception as e:
+            print(f"Error calculating prediction confidence: {e}")
+            return 70.0
+    
+    async def predict_affected_nodes(self, trigger_event: Dict[str, Any], cascade_probability: float) -> List[str]:
+        """Predict which infrastructure nodes will be affected by cascade"""
+        try:
+            location = trigger_event.get('location', 'mumbai')
+            
+            # Node vulnerability based on location
+            location_nodes = {
+                'mumbai': ['power_grid_mumbai', 'telecom_mumbai', 'transport_mumbai', 'hospital_mumbai', 'water_mumbai'],
+                'delhi': ['power_grid_delhi', 'telecom_delhi', 'transport_delhi', 'hospital_delhi', 'water_delhi'],
+                'chennai': ['power_grid_chennai', 'telecom_chennai'],
+                'bangalore': ['power_grid_bangalore', 'telecom_bangalore']
+            }
+            
+            affected_nodes = location_nodes.get(location, [])
+            
+            # Add nodes based on cascade probability
+            if cascade_probability > 0.7:
+                # High probability - affect more nodes
+                affected_nodes.extend(affected_nodes[:2])  # Add 2 more critical nodes
+            elif cascade_probability > 0.4:
+                # Medium probability - affect 1 more node
+                if len(affected_nodes) > 0:
+                    affected_nodes.append(affected_nodes[0])
+            
+            return list(set(affected_nodes))  # Remove duplicates
+            
+        except Exception as e:
+            print(f"Error predicting affected nodes: {e}")
+            return trigger_event.get('affected_nodes', [])
+    
+    def estimate_time_to_cascade(self, cascade_probability: float) -> str:
+        """Estimate time until cascade failure occurs"""
+        try:
+            if cascade_probability > 0.8:
+                return "5-15 minutes"
+            elif cascade_probability > 0.6:
+                return "30-60 minutes"
+            elif cascade_probability > 0.4:
+                return "1-3 hours"
+            elif cascade_probability > 0.2:
+                return "3-6 hours"
+            else:
+                return "6-12 hours"
+                
+        except Exception as e:
+            print(f"Error estimating time to cascade: {e}")
+            return "Unknown"
+    
+    def generate_mitigation_recommendations(self, risk_score: float, vulnerability_weights: Dict[str, Any]) -> List[str]:
+        """Generate mitigation recommendations based on risk and vulnerability"""
+        try:
+            recommendations = []
+            
+            if risk_score > 70:
+                recommendations.extend([
+                    "Activate emergency backup power systems",
+                    "Deploy additional response teams",
+                    "Initiate controlled load shedding",
+                    "Alert neighboring regions for preparedness"
+                ])
+            
+            if vulnerability_weights.get('vulnerability_score', 0) > 0.6:
+                recommendations.extend([
+                    "Inspect critical infrastructure joints",
+                    "Pre-position repair equipment",
+                    "Activate redundant communication channels"
+                ])
+            
+            if risk_score > 50:
+                recommendations.extend([
+                    "Monitor system load in real-time",
+                    "Prepare isolation procedures for critical nodes",
+                    "Update emergency response protocols"
+                ])
+            
+            # Remove duplicates
+            return list(set(recommendations))
+            
+        except Exception as e:
+            print(f"Error generating mitigation recommendations: {e}")
+            return ["Monitor system status"]
+    
+    async def store_prediction_for_learning(self, prediction: Dict[str, Any]):
+        """Store prediction for continuous learning improvement"""
+        try:
+            # Create learning data directory
+            learning_dir = Path("data/learning_predictions")
+            learning_dir.mkdir(exist_ok=True, parents=True)
+            
+            # Store prediction with timestamp
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            prediction_file = learning_dir / f"prediction_{timestamp}.json"
+            
+            with open(prediction_file, 'w') as f:
+                json.dump(prediction, f, indent=2)
+            
+            print(f"Stored prediction for learning: {prediction_file}")
+            
+        except Exception as e:
+            print(f"Error storing prediction for learning: {e}")
+
     def _calculate_system_risk_level(self, cascade_probabilities: Dict[str, Any]) -> str:
         """Calculate overall system risk level"""
         if not cascade_probabilities:

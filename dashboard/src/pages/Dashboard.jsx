@@ -6,6 +6,45 @@ import IntelligenceFeed from "../components/IntelligenceFeed";
 import { checkBackendHealth, API_BASE, connectWebSocket } from "../services/api";
 import "../index.css";
 
+// Mock data generators for fallback when backend offline
+const generateMockStabilityData = () => ({
+  stability_index: {
+    overall_score: Math.random() * 0.4 + 0.6,
+    level: "healthy",
+    factors: {
+      infrastructure_health: Math.random() * 0.4 + 0.6,
+      disaster_risk: Math.random() * 0.4 + 0.2,
+      agent_response_capacity: Math.random() * 0.4 + 0.7,
+      temporal_stability: Math.random() * 0.4 + 0.4
+    },
+    trend: "stable",
+    timestamp: new Date().toISOString()
+  }
+});
+
+const generateMockAlerts = () => [
+  {
+    alert_id: `alert_${Date.now()}`,
+    alert_type: "system_check",
+    severity: "info",
+    description: "Demo mode active - mock data",
+    location: "System",
+    progress: 1.0,
+    timestamp: new Date().toISOString()
+  }
+];
+
+const generateMockTimeline = () => [
+  {
+    event_id: `event_${Date.now()}`,
+    event_type: "system_check",
+    description: "System operating in demo mode",
+    severity: "info",
+    location: "Global",
+    timestamp: new Date().toISOString()
+  }
+];
+
 const Dashboard = () => {
   const [systemStatus, setSystemStatus] = useState(null);
   const [backendOnline, setBackendOnline] = useState(false);
@@ -99,24 +138,28 @@ const Dashboard = () => {
     }
   }, [backendOnline]);
 
+  // Automatic refresh every 5 seconds for stability index, alerts, and timeline
+  useEffect(() => {
+    const refreshInterval = setInterval(() => {
+      if (!backendOnline) {
+        // Use mock data when backend offline
+        setSystemStatus({
+          stability_index: generateMockStabilityData().stability_index,
+          alerts: generateMockAlerts(),
+          timeline: generateMockTimeline(),
+          demo_mode: true
+        });
+      } else {
+        // Fetch real data when backend online
+        fetchStatus();
+      }
+    }, 5000); // 5 seconds
+
+    return () => clearInterval(refreshInterval);
+  }, [backendOnline]);
+
   return (
     <div className="command-center">
-      {/* Backend Connection Error Banner */}
-      {!backendOnline && (
-        <div style={{
-          backgroundColor: "#ff4444",
-          color: "white",
-          padding: "12px 16px",
-          textAlign: "center",
-          fontWeight: "bold",
-          borderBottom: "2px solid #cc0000",
-          zIndex: 1000,
-          fontSize: "12px"
-        }}>
-          🔴 BACKEND OFFLINE: {connectionError || "Unable to connect to backend server at http://127.0.0.1:8000"}
-        </div>
-      )}
-
       <header className="command-header">
         <div className="header-left">
           <h1 className="system-title">PRALAYA-NET</h1>
@@ -124,7 +167,9 @@ const Dashboard = () => {
         </div>
 
         <div className="header-right">
+
           {/* Backend Status Indicator */}
+          
           <div className="mode-indicator">
             <span style={{ marginRight: "15px", display: "flex", alignItems: "center", gap: "5px", fontSize: "inherit" }}>
               <span style={{

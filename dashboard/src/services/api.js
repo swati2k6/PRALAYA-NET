@@ -1,5 +1,9 @@
 // Backend URL configuration - supports both development and production
 const getBackendUrl = () => {
+  // Primary: process.env.REACT_APP_API_URL as specified
+  const processEnvUrl = process.env.REACT_APP_API_URL;
+  if (processEnvUrl) return processEnvUrl;
+
   // Vite env vars
   const viteUrl = import.meta.env.VITE_API_URL;
   if (viteUrl) return viteUrl;

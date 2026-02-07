@@ -24,14 +24,54 @@ const EnhancedCommandCenter = () => {
   const [loading, setLoading] = useState(true);
   const [systemMode, setSystemMode] = useState('autonomous');
   const [demoActive, setDemoActive] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState('disconnected'); // connected, disconnected, error
-  const [backendStatus, setBackendStatus] = useState('checking'); // checking, online, offline
+  const [connectionStatus, setConnectionStatus] = useState('disconnected');
+  const [backendStatus, setBackendStatus] = useState('checking');
   
   // WebSocket connections
   const stabilityWs = useRef(null);
   const actionsWs = useRef(null);
   const timelineWs = useRef(null);
   const riskWs = useRef(null);
+
+  // Helper functions
+  const getStabilityColor = (index) => {
+    if (!index) return 'text-gray-500';
+    if (index.overall_score < 0.4) return 'text-red-500';
+    if (index.overall_score < 0.7) return 'text-yellow-500';
+    return 'text-green-500';
+  };
+
+  const getRiskColor = (risk) => {
+    if (risk > 0.8) return '#dc2626';
+    if (risk > 0.6) return '#f59e0b';
+    if (risk > 0.4) return '#3b82f6';
+    return '#10b981';
+  };
+
+  const getEventSeverityClass = (event) => {
+    if (event.severity === 'critical') return 'critical';
+    if (event.severity === 'warning') return 'warning';
+    if (event.event_type === 'disaster_detected') return 'critical';
+    if (event.event_type === 'intent_generated') return 'warning';
+    if (event.event_type === 'stabilization_executed') return 'success';
+    return 'info';
+  };
+
+  // Infrastructure coordinates
+  const infrastructureCoords = {
+    power_grid_mumbai: [19.0760, 72.8777],
+    power_grid_delhi: [28.7041, 77.1025],
+    telecom_mumbai: [19.0760, 72.8777],
+    telecom_delhi: [28.7041, 77.1025],
+    transport_mumbai: [19.0760, 72.8777],
+    transport_delhi: [28.7041, 77.1025],
+    water_mumbai: [19.0760, 72.8777],
+    water_delhi: [28.7041, 77.1025],
+    hospital_mumbai: [19.0760, 72.8777],
+    hospital_delhi: [28.7041, 77.1025],
+    bridge_sealink: [19.0760, 72.8777],
+    bridge_bandra: [19.0760, 72.8777]
+  };
 
   // Initialize WebSocket connections
   useEffect(() => {
@@ -51,7 +91,7 @@ const EnhancedCommandCenter = () => {
         setConnectionStatus('error');
         console.error('Backend health check failed:', error);
       }
-    }, 5000); // Check every 5 seconds
+    }, 5000);
 
     // Initial health check and data fetch
     fetchInitialData();
@@ -272,34 +312,19 @@ const EnhancedCommandCenter = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-xl mb-4">Loading Enhanced Command Center...</div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
-            <span className="text-sm text-gray-400">
-              {backendStatus === 'checking' ? 'Checking backend connection...' : 
-               backendStatus === 'online' ? 'Backend connected' : 
-               'Backend offline - check if backend is running'}
-              </span>
-          </div>
+      <div className="loading-container">
+        <div className="loading-text">Loading Enhanced Command Center...</div>
+        <div className="loading-status">
+          <div className="loading-spinner"></div>
+          <span>
+            {backendStatus === 'checking' ? 'Checking backend connection...' : 
+             backendStatus === 'online' ? 'Backend connected' : 
+             'Backend offline - check if backend is running'}
+          </span>
         </div>
       </div>
     );
   }
-
-  const getStabilityColor = (index) => {
-    if (!index) return 'text-gray-500';
-
-if (loading) {
-    transport_delhi: [28.7041, 77.1025],
-    water_mumbai: [19.0760, 72.8777],
-    water_delhi: [28.7041, 77.1025],
-    hospital_mumbai: [19.0760, 72.8777],
-    hospital_delhi: [28.7041, 77.1025],
-    bridge_sealink: [19.0760, 72.8777],
-    bridge_bandra: [19.0760, 72.8777]
-  };
 
   return (
     <div className="command-center">
@@ -483,7 +508,7 @@ if (loading) {
                 <CircleMarker
                   key={node.node_id}
                   center={[node.latitude, node.longitude]}
-                  radius={node.risk * 50000} // Scale risk for visibility
+                  radius={node.risk * 50000}
                   fillColor={getRiskColor(node.risk)}
                   color={getRiskColor(node.risk)}
                   weight={2}
@@ -540,87 +565,29 @@ if (loading) {
                 </div>
               </div>
             )}
-              connectionStatus === 'error' ? 'bg-red-500' : 
-              'bg-yellow-500'
-            }`}></div>
-            <span className="text-sm text-gray-400">
-              {connectionStatus === 'connected' ? '✅ Connected' : 
-               connectionStatus === 'error' ? '❌ Connection Error' : 
-               '🔄 Reconnecting...'}
-            </span>
           </div>
-          <div className="flex items-center space-x-2">
-            <div className={`w-3 h-3 rounded-full ${
-              backendStatus === 'online' ? 'bg-green-500' : 
-              backendStatus === 'offline' ? 'bg-red-500' : 
-              'bg-yellow-500'
-            }`}></div>
-            <span className="text-sm text-gray-400">
-              Backend: {backendStatus === 'online' ? '🟢 Online' : 
-                     backendStatus === 'offline' ? '🔴 Offline' : 
-                     '🟡 Checking...'}
-            </span>
-          </div>
-        </div>
-        <div className="space-y-3 max-h-64 overflow-y-auto">
-          {timelineEvents.slice(-10).reverse().map((event, index) => (
-            <div key={index} className="flex items-start space-x-3 bg-gray-700 rounded p-3">
-              <div className={`w-2 h-2 rounded-full mt-2 ${
-                event.severity === 'critical' ? 'bg-red-500' :
-                event.severity === 'warning' ? 'bg-yellow-500' :
-                event.event_type === 'disaster_detected' ? 'bg-red-500' :
-                event.event_type === 'intent_generated' ? 'bg-yellow-500' :
-                event.event_type === 'stabilization_executed' ? 'bg-green-500' :
-                'bg-blue-500'
-              }`}></div>
-              <div className="flex-1">
-                <div className="font-semibold capitalize">
-                  {event.event_type?.replace('_', ' ') || 'Unknown Event'}
-                </div>
-                <div className="text-gray-400 text-sm">
-                  {event.data?.message || 'System event occurred'}
-                </div>
-                <div className="text-gray-500 text-xs">
-                  {new Date(event.timestamp).toLocaleTimeString()}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
 
-      {/* System Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-gray-800 rounded-lg p-4">
-          <h3 className="font-semibold mb-2">Infrastructure Health</h3>
-          <div className="text-2xl font-bold text-blue-400">
-            {systemData?.infrastructure?.total_nodes || 0}
-          </div>
-          <div className="text-gray-400 text-sm">Total Nodes</div>
-          <div className="text-sm text-red-400 mt-1">
-            {systemData?.infrastructure?.high_risk_nodes || 0} High Risk
-          </div>
-        </div>
-        
-        <div className="bg-gray-800 rounded-lg p-4">
-          <h3 className="font-semibold mb-2">Agent Coordination</h3>
-          <div className="text-2xl font-bold text-green-400">
-            {systemData?.agent_coordination?.available || 0}
-          </div>
-          <div className="text-gray-400 text-sm">Available Agents</div>
-          <div className="text-sm text-yellow-400 mt-1">
-            {systemData?.agent_coordination?.total_agents || 0} Total
-          </div>
-        </div>
-        
-        <div className="bg-gray-800 rounded-lg p-4">
-          <h3 className="font-semibold mb-2">Execution Proof</h3>
-          <div className="text-2xl font-bold text-purple-400">
-            {systemData?.execution_proof?.total_executions || 0}
-          </div>
-          <div className="text-gray-400 text-sm">Executions Today</div>
-          <div className="text-sm text-green-400 mt-1">
-            {systemData?.autonomous_actions?.completed_today || 0} Completed
+          {/* Crisis Timeline */}
+          <div className="timeline-panel">
+            <h2 className="text-xl font-bold mb-4">Crisis Timeline Feed</h2>
+            <div className="timeline-list">
+              {timelineEvents.length === 0 ? (
+                <div className="text-gray-400 text-center py-8">
+                  No events yet - waiting for system activity
+                </div>
+              ) : (
+                timelineEvents.slice(-10).reverse().map((event, index) => (
+                  <div key={index} className="timeline-event">
+                    <div className={`event-indicator ${getEventSeverityClass(event)}`}></div>
+                    <div className="event-content">
+                      <div className="event-title">{event.event_type}</div>
+                      <div className="event-description">{event.description}</div>
+                      <div className="event-time">{new Date(event.timestamp).toLocaleString()}</div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       </div>
