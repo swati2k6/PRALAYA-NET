@@ -1,78 +1,156 @@
 # PRALAYA-NET Render Deployment Guide
 
-## Python 3.13 Deployment Fix
+## Deployment Configuration - Python 3.12
 
-This guide covers the fixes applied to resolve the `setuptools.build_meta` import error on Render.
+This guide provides the fixed configuration for deploying PRALAYA-NET on Render without the `setuptools.build_meta` import error.
 
-## Problem
-```
-pip._vendor.pyproject_hooks._impl.BackendUnavailable: Cannot import 'setuptools.build_meta'
-```
+## Quick Start
 
-## Root Cause
-- Outdated pip/setuptools/wheel versions on Render's Python 3.13 environment
-- Missing PEP 517/518 build backend configuration
-- Packages with incompatible Python 3.13 versions
+### Option 1: Deploy Using Render Dashboard
 
-## Files Modified
-
-### 1. `backend/requirements_simple.txt` ✅
-- Added explicit `setuptools>=70.0.0`, `wheel>=0.43.0`, `pip>=24.0`
-- Updated all packages to Python 3.13 compatible versions
-
-### 2. `backend/pyproject.toml` ✅ (NEW)
-- Added proper `[build-system]` configuration
-- Specified `build-backend = "setuptools.build_meta"`
-- Defined project metadata for modern Python packaging
-
-### 3. `backend/render.yaml` ✅
-- Set `pythonVersion: "3.13"`
-- Added pre-build command to upgrade pip/setuptools/wheel
-
-### 4. `backend/Dockerfile` ✅
-- Updated to Python 3.13
-- Added early pip/setuptools/wheel upgrade
-
-### 5. `render.yaml` ✅
-- Updated build command to upgrade build tools first
-- Fixed path to requirements file
-
-### 6. `Dockerfile` (root) ✅
-- Updated for root-level deployment
-
-## Deployment Options
-
-### Option 1: Direct Deploy (No Dockerfile)
-1. Connect your repository to Render
-2. Use these settings:
+1. **Connect Repository**: Connect your GitHub repository to Render
+2. **Create Web Service**: Select the repository and configure:
    - **Environment**: Python
-   - **Python Version**: 3.13
+   - **Python Version**: `3.12`
    - **Build Command**:
      ```bash
-     pip install --upgrade pip setuptools wheel && pip install -r backend/requirements_simple.txt
+     pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
      ```
    - **Start Command**:
      ```bash
-     cd backend && python main.py
+     uvicorn main:app --host 0.0.0.0 --port $PORT
      ```
+3. **Environment Variables**: Add these in the Render dashboard:
+   ```
+   NASA_API_KEY=<your_key_here>
+   DATA_GOV_KEY=<your_key_here>
+   OPENWEATHER_API_KEY=<your_key_here>
+   PORT=8000
+   DEMO_MODE=true
+   ```
 
-### Option 2: Docker Deploy
-1. Use the provided `Dockerfile` at root
-2. Render will automatically detect and use it
-3. Ensure `PYTHON_VERSION=3.13` environment variable is set
+### Option 2: Deploy Using render.yaml
 
-## Quick Test (Local)
+Render will automatically detect `render.yaml` in the root directory and use it for deployment.
+
+## Files Configuration
+
+### backend/render.yaml (Recommended)
+```yaml
+services:
+  - type: web
+    name: PRALAYA-NET
+    env: python
+    pythonVersion: "3.12"
+    buildCommand: |
+      pip install --upgrade pip setuptools wheel
+      pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: NASA_API_KEY
+        value: <your_key_here>
+      - key: DATA_GOV_KEY
+        value: <your_key_here>
+      - key: OPENWEATHER_API_KEY
+        value: <your_key_here>
+      - key: PORT
+        value: 8000
+      - key: DEMO_MODE
+        value: "true"
+    plan: starter
+    region: oregon
+    healthCheckPath: /health
+    autoDeploy: true
+```
+
+### backend/pyproject.toml
+```toml
+[build-system]
+requires = ["setuptools>=69.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+```
+
+### backend/requirements.txt
+```
+# Build System - CRITICAL: Must be at the top and upgraded first
+setuptools>=69.0.0
+wheel>=0.42.0
+pip>=24.0
+
+# Core Framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+
+# Data Validation
+pydantic>=2.5.3
+
+# HTTP & Async
+httpx>=0.26.0
+aiofiles>=23.2.1
+python-multipart>=0.0.9
+
+# Web & Networking
+websockets>=12.0
+requests>=2.31.0
+python-dotenv>=1.0.1
+
+# Data Science & ML
+numpy>=1.26.0
+networkx>=3.3
+
+# Security
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+```
+
+## Why Python 3.12?
+
+Python 3.12 offers:
+- Better performance (10-25% faster than 3.11)
+- Improved error messages
+- Better package compatibility
+- No changes required to existing code
+- Most packages have stable wheels available
+
+## Why This Fixes the Error
+
+The `BackendUnavailable: Cannot import 'setuptools.build_meta'` error occurred because:
+
+1. **Build tools upgrade order**: The `pip install --upgrade pip setuptools wheel` command runs FIRST before installing any packages
+2. **PEP 517/518 compliance**: The `[build-system]` section now uses compatible versions
+3. **Minimal dependencies**: `setuptools>=69.0.0` is sufficient and widely available
+4. **No problematic packages**: torch, opencv-python are not included (these often fail on Python 3.13)
+
+## Docker Deployment
+
+If using Docker, the Dockerfile is configured with:
+
+```dockerfile
+FROM python:3.12-slim
+
+# Upgrade build tools FIRST
+RUN pip install --upgrade pip setuptools wheel
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Run application
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+## Local Testing
 
 ```bash
-# Test Python 3.13 compatibility
-python --version  # Should be 3.13.x
+# Verify Python version
+python --version  # Should be 3.12.x
 
 # Upgrade build tools
 pip install --upgrade pip setuptools wheel
 
 # Test installation
 cd backend
-pip install -r requirements_simple.txt
+pip install -r requirements.txt
 
 # Verify installation
 python -c "import setuptools; print(f'setuptools: {setuptools.__version__}')"
@@ -80,63 +158,65 @@ python -c "import uvicorn; print(f'uvicorn: {uvicorn.__version__}')"
 python -c "import fastapi; print(f'fastapi: {fastapi.__version__}')"
 
 # Run the app
-python main.py
+uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-## Environment Variables for Render
+## Health Check
 
-Add these in Render dashboard:
+After deployment, verify with:
+```bash
+curl https://<your-service>.onrender.com/health
 ```
-PYTHON_VERSION=3.13
-PORT=10000
-HOST=0.0.0.0
-PYTHONDONTWRITEBYTECODE=1
-PYTHONUNBUFFERED=1
-PIP_DISABLE_PIP_VERSION_CHECK=1
-DEMO_MODE=true
+
+Expected response:
+```json
+{
+  "status": "ok",
+  "timestamp": "2024-01-01T00:00:00.000000",
+  "service": "PRALAYA-NET Backend"
+}
 ```
 
 ## Troubleshooting
 
 ### Still getting setuptools error?
-Run this in your build command:
+Ensure the build command includes the upgrade:
 ```bash
-pip install --force-reinstall setuptools wheel pip
+pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
 ```
 
-### Package not installing?
-Check if the package supports Python 3.13:
-```bash
-pip index versions <package-name>
+### Package compatibility issues?
+Python 3.12 has excellent package compatibility. If you encounter issues:
+1. Check if the package supports Python 3.12
+2. Try updating to the latest version
+3. Contact package maintainers for Python 3.12 support
+
+### Docker build fails?
+Ensure you're using Python 3.12 base image:
+```dockerfile
+FROM python:3.12-slim
 ```
 
-### torch/opencv-python issues?
-These packages may not have Python 3.13 wheels yet. Use:
-```bash
-pip install --only-binary=:all: torch  # May fail
-# OR
-pip install torch --pre  # Try pre-release
-```
+## Environment Variables
+
+| Variable | Value | Required |
+|----------|-------|----------|
+| NASA_API_KEY | Your NASA API key | No (demo mode works without) |
+| DATA_GOV_KEY | Your Data.gov API key | No (demo mode works without) |
+| OPENWEATHER_API_KEY | Your OpenWeather API key | No (demo mode works without) |
+| PORT | 8000 | Yes (Render sets this) |
+| DEMO_MODE | true | Recommended |
 
 ## Rollback Plan
 
-If Python 3.13 causes issues, downgrade to 3.11:
-1. Change `pythonVersion: "3.11"` in render.yaml
-2. Update requirements.txt with original versions
+If issues occur, Render provides automatic rollback. Manually:
+1. Change `pythonVersion` to `"3.11"` in render.yaml
+2. Update `requires-python` in pyproject.toml to `">=3.11"`
 3. Redeploy
-
-## Verification Checklist
-
-- [ ] `pip --version` shows 24.0+
-- [ ] `python -c "import setuptools; print(setuptools.__version__)"` shows 70.0+
-- [ ] `pip install -r requirements_simple.txt` completes without errors
-- [ ] Application starts: `python main.py`
-- [ ] Health check passes: `curl http://localhost:8000/health`
 
 ## Support
 
-If issues persist:
-1. Check Render build logs for specific package errors
-2. Try installing problematic packages individually
-3. Consider using `requirements_simple.txt` (minimal dependencies) first
+- Check Render build logs for specific errors
+- Verify all environment variables are set
+- Ensure repository is connected correctly
 

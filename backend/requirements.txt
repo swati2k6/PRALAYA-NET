@@ -1,6 +1,11 @@
-# PRALAYA-NET Backend - Full Dependencies
-# Python 3.13 compatible versions
-# Generated with setuptools.build_meta compatibility
+# PRALAYA-NET Backend - Requirements
+# Python 3.12 compatible versions
+# Optimized for Render deployment
+
+# Build System - CRITICAL: Must be at the top and upgraded first
+setuptools>=69.0.0
+wheel>=0.42.0
+pip>=24.0
 
 # Core Framework
 fastapi>=0.109.0
@@ -19,22 +24,11 @@ websockets>=12.0
 requests>=2.31.0
 python-dotenv>=1.0.1
 
-# Build System (Critical for Python 3.13)
-setuptools>=70.0.0
-wheel>=0.43.0
-pip>=24.0
-
-# Data Science & ML (Python 3.13 compatible versions)
-# Using newer versions that support Python 3.13
+# Data Science & ML (Python 3.12 compatible)
 numpy>=1.26.0
 networkx>=3.3
 
-# Note: torch and opencv-python may need platform-specific wheels
-# Uncomment if you need full ML capabilities:
-# torch>=2.2.0
-# opencv-python>=4.9.0
-
-# Optional ML packages (uncomment as needed):
+# Optional ML packages (uncomment if needed):
 # pillow>=10.1.0
 # scikit-learn>=1.4.0
 

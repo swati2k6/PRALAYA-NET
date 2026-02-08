@@ -1,45 +1,26 @@
-# Render Configuration for PRALAYA-NET Backend
-# Optimized for Python 3.13 deployment
+# PRALAYA-NET Render Configuration - Root Level
+# Points to backend directory
 
 services:
-  # Production Web Service
   - type: web
-    name: pralaya-net-backend
+    name: PRALAYA-NET
     env: python
-    pythonVersion: "3.13"  # Python 3.13 for modern features
-    buildCommand: |
-      # Upgrade pip, setuptools, and wheel FIRST (critical for Python 3.13)
-      pip install --upgrade pip setuptools wheel
-      # Install dependencies
-      pip install -r backend/requirements_simple.txt
-    startCommand: cd backend && python main.py
-    
-    # Environment variables
+    pythonVersion: "3.12"
+    buildCommand: cd backend && pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
-      - key: PYTHON_VERSION
-        value: "3.13"
+      - key: NASA_API_KEY
+        value: <your_key_here>
+      - key: DATA_GOV_KEY
+        value: <your_key_here>
+      - key: OPENWEATHER_API_KEY
+        value: <your_key_here>
       - key: PORT
-        value: 10000
-      - key: HOST
-        value: "0.0.0.0"
-      - key: PYTHONDONTWRITEBYTECODE
-        value: "1"
-      - key: PYTHONUNBUFFERED
-        value: "1"
-      - key: PIP_DISABLE_PIP_VERSION_CHECK
-        value: "1"
+        value: 8000
       - key: DEMO_MODE
         value: "true"
-
-    # Deploy configuration
     plan: starter
     region: oregon
     healthCheckPath: /health
     autoDeploy: true
-
-# Resource Limits
-resources:
-  units: 1
-  memory: 512Mi
-  cpu: 0.5
 

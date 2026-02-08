@@ -1,12 +1,12 @@
 [build-system]
-requires = ["setuptools>=70.0.0", "wheel>=0.43.0"]
+requires = ["setuptools>=69.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "pralaya-net-backend"
 version = "1.0.0"
 description = "PRALAYA-NET Backend - Autonomous Disaster Response Command Platform"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.109.0",
     "uvicorn[standard]>=0.27.0",
