@@ -4,26 +4,30 @@
 services:
   # Production Web Service
   - type: web
-    name: PRALAYA-NET
+    name: PRALAYA-NET-Backend
     env: python
-    pythonVersion: "3.12"  # Python 3.12 for better package compatibility
+    pythonVersion: "3.12"
     buildCommand: |
+      # CRITICAL: Upgrade build tools FIRST to fix setuptools.build_meta error
       pip install --upgrade pip setuptools wheel
+      # Install dependencies
       pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: NASA_API_KEY
-        value: <your_key_here>
+        value: ""
       - key: DATA_GOV_KEY
-        value: <your_key_here>
+        value: ""
       - key: OPENWEATHER_API_KEY
-        value: <your_key_here>
+        value: ""
       - key: PORT
         value: 8000
       - key: DEMO_MODE
         value: "true"
       - key: PYTHONUNBUFFERED
         value: "1"
+      - key: PYTHONHASHSEED
+        value: "0"
     plan: starter
     region: oregon
     healthCheckPath: /health

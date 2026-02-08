@@ -1,19 +1,29 @@
-# backend/config.py
+"""
+PRALAYA-NET Backend Configuration
+Environment variables and app settings
+"""
+import os
+from pathlib import Path
 
+# App Information
 APP_NAME = "PRALAYA-NET Backend"
-VERSION = "0.1.0"
+VERSION = "1.0.0"
 
 # Server Configuration
 HOST = "0.0.0.0"
-PORT = 8000
+PORT = int(os.getenv("PORT", 8000))
+
+# CORS Configuration - Allow all origins for development
 CORS_ORIGINS = [
-    "http://localhost:5173", 
-    "http://localhost:3000", 
+    "http://localhost:5173",
+    "http://localhost:3000",
     "http://127.0.0.1:5173",
     "http://127.0.0.1:3000",
     "http://0.0.0.0:5173",
     "http://0.0.0.0:3000",
     "https://pralaya-net.vercel.app",
+    "https://*.netlify.app",
+    "https://*.vercel.app",
     "*"  # Fallback for production
 ]
 
@@ -41,7 +51,7 @@ GNN_UPDATE_INTERVAL = 5  # seconds
 
 # ESP32 Configuration
 ESP32_POLL_INTERVAL = 10  # seconds
-ESP32_BASE_URL = "http://192.168.1.100"  # Update with your ESP32 IP
+ESP32_BASE_URL = os.getenv("ESP32_BASE_URL", "http://192.168.1.100")
 
 # Drone Configuration
 DRONE_UPDATE_INTERVAL = 2  # seconds
@@ -53,11 +63,21 @@ DATA_RAW_PATH = "data/raw"
 DATA_PROCESSED_PATH = "data/processed"
 DATA_SIMULATED_PATH = "data/simulated"
 
+# API Keys (from environment variables)
+NASA_API_KEY = os.getenv("NASA_API_KEY", "")
+DATA_GOV_KEY = os.getenv("DATA_GOV_KEY", "")
+OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY", "")
+
 # Real-time Data Sources
 NASA_FIRMS_URL = "https://firms.modaps.eosdis.nasa.gov/api/area/csv"
+NASA_POWER_URL = "https://power.larc.nasa.gov/api/temporal/hourly/point"
 USGS_EARTHQUAKE_URL = "https://earthquake.usgs.gov/fdsnws/event/1/query"
-OPENWEATHER_ALERTS_URL = "https://api.openweathermap.org/data/2.5/onecall"
+OPENWEATHER_URL = "https://api.openweathermap.org/data/2.5/weather"
 
 # Ingestion Settings
 INGESTION_INTERVAL_SEC = 300  # 5 minutes
 CACHE_TTL_SEC = 3600  # 1 hour
+
+# Demo Mode
+DEMO_MODE = os.getenv("DEMO_MODE", "true").lower() == "true"
+

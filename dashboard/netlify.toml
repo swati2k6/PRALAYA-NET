@@ -1,4 +1,4 @@
-# PRALAYA-NET Netlify Configuration
+# PRALAYA-NET Frontend Netlify Configuration
 
 [build]
   # Build command
@@ -8,27 +8,48 @@
   publish = "dist"
   
   # Base directory
-  base = "/"
+  base = "/dashboard"
   
   # Node.js version
   node_version = "18"
 
 [build.environment]
   # Production API URL - Update this to your deployed backend URL
-  REACT_APP_API_URL = "https://pralaya-net-backend.onrender.com"
-  VITE_API_URL = "https://pralaya-net-backend.onrender.com"
-  VITE_WS_URL = "wss://pralaya-net-backend.onrender.com"
+  NEXT_PUBLIC_API_URL = "https://your-backend.onrender.com"
+  VITE_API_URL = "https://your-backend.onrender.com"
+  VITE_WS_URL = "wss://your-backend.onrender.com"
 
   # Build mode
   VITE_DEV_MODE = "false"
   VITE_DEBUG = "false"
 
 [[redirects]]
-  # Redirect all routes to the main app
+  # Single page application redirect
   from = "/*"
   to = "/index.html"
   status = 200
 
+[[headers]]
+  # Cache control headers
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  # Static assets - longer cache
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
 [context.production]
   # Production-specific settings
-  command = "npm run build && cp _redirects /dist/"
+  command = "npm run build"
+
+[context.development]
+  # Development environment
+  command = "npm run dev"
+  [build.environment]
+    VITE_DEV_MODE = "true"
+

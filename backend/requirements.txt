@@ -2,7 +2,8 @@
 # Python 3.12 compatible versions
 # Optimized for Render deployment
 
-# Build System - CRITICAL: Must be at the top and upgraded first
+# ⚠️ CRITICAL: Build system - Must be at the top and upgraded FIRST
+# This fixes the "BackendUnavailable: Cannot import 'setuptools.build_meta'" error
 setuptools>=69.0.0
 wheel>=0.42.0
 pip>=24.0
@@ -28,11 +29,11 @@ python-dotenv>=1.0.1
 numpy>=1.26.0
 networkx>=3.3
 
-# Optional ML packages (uncomment if needed):
-# pillow>=10.1.0
-# scikit-learn>=1.4.0
-
 # Security
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
+
+# Optional ML packages - uncomment if needed:
+# pillow>=10.1.0
+# scikit-learn>=1.4.0
 

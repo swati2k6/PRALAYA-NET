@@ -1,20 +1,23 @@
-# PRALAYA-NET Render Configuration - Root Level
+# PRALAYA-NET Root Render Configuration
 # Points to backend directory
 
 services:
   - type: web
-    name: PRALAYA-NET
+    name: PRALAYA-NET-Backend
+    repo: https://github.com/yourusername/PRALAYA-NET
+    branch: main
     env: python
     pythonVersion: "3.12"
-    buildCommand: cd backend && pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
+    buildCommand: |
+      cd backend && pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
     startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: NASA_API_KEY
-        value: <your_key_here>
+        value: ""
       - key: DATA_GOV_KEY
-        value: <your_key_here>
+        value: ""
       - key: OPENWEATHER_API_KEY
-        value: <your_key_here>
+        value: ""
       - key: PORT
         value: 8000
       - key: DEMO_MODE

@@ -20,7 +20,8 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip, setuptools, and wheel FIRST (critical for build system)
+# ⚠️ CRITICAL: Upgrade pip, setuptools, and wheel FIRST
+# This fixes the "BackendUnavailable: Cannot import 'setuptools.build_meta'" error
 RUN pip install --upgrade pip setuptools wheel
 
 # Copy requirements first (for better caching)
@@ -33,9 +34,19 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY main.py .
 COPY app.py .
+COPY config.py .
+COPY middleware.py .
+COPY websocket_manager.py .
 
 # Create data directories
 RUN mkdir -p data/disaster_history data/predictions
+
+# Copy api, services, orchestration directories
+COPY api/ ./api/
+COPY services/ ./services/
+COPY orchestration/ ./orchestration/
+COPY drone/ ./drone/
+COPY ai/ ./ai/
 
 # Expose port
 EXPOSE 8000

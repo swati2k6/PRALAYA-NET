@@ -2,17 +2,22 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // Load environment variables
-const env = loadEnv('', process.cwd())
+const env = loadEnv(process.env.MODE || 'development', process.cwd())
 
 export default defineConfig({
   plugins: [react()],
   define: {
     __APP_ENV__: JSON.stringify(env.MODE || 'development'),
-    __API_URL__: JSON.stringify(env.VITE_API_URL || 'http://127.0.0.1:8000')
+  },
+  resolve: {
+    alias: {
+      '@': '/src'
+    }
   },
   build: {
-    outDir: 'dist', // Standard Vite output
-    emptyOutDir: true
+    outDir: 'dist',
+    emptyOutDir: true,
+    sourcemap: true
   },
   server: {
     host: '0.0.0.0',
@@ -24,13 +29,20 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         rewrite: (path) => {
-          console.log(`[Vite Proxy] Forwarding ${path} to ${env.VITE_API_URL || 'http://127.0.0.1:8000'}${path}`);
-          return path;
+          console.log(`[Vite Proxy] Forwarding ${path} to ${env.VITE_API_URL || 'http://127.0.0.1:8000'}${path}`)
+          return path
         },
         onError: (err) => {
-          console.error('[Vite Proxy] Error:', err);
+          console.error('[Vite Proxy] Error:', err)
         }
+      },
+      '/ws': {
+        target: (env.VITE_WS_URL || 'ws://127.0.0.1:8000').replace(/^http/, 'ws'),
+        changeOrigin: true,
+        secure: false,
+        ws: true
       }
     }
   }
 })
+

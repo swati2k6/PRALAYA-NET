@@ -1,49 +1,66 @@
 /**
  * API Configuration for PRALAYA-NET Frontend
- * Automatically detects environment and sets appropriate API URL
+ * Robust environment variable detection for development and production
  */
 
-// Get API URL from environment with fallback chain
-const API_URL = import.meta.env.VITE_API_URL || 
-                 import.meta.env.REACT_APP_API_URL || 
-                 'http://127.0.0.1:8000';
+// Environment variable detection priority order:
+const ENV_PRIORITY = [
+  // Vercel/Netlify production
+  'NEXT_PUBLIC_API_URL',
+  // Vite environment
+  'VITE_API_URL',
+  // React environment (for CRA compatibility)
+  'REACT_APP_API_URL',
+  // Legacy Vite
+  'VITE_REACT_APP_API_URL',
+  // Window fallback
+  'VITE_API_URL'
+]
 
-// WebSocket URL (same as API but with ws protocol)
-const WS_URL = API_URL.replace('http://', 'ws://').replace('https://', 'wss://');
-
-// API endpoints - simplified for reliability
-export const API_ENDPOINTS = {
-  // Health and System
-  HEALTH: `${API_URL}/api/health`,
-  SYSTEM_STATUS: `${API_URL}/api/system-status`,
+// Get the best available API URL
+function getApiUrl() {
+  // Check environment variables
+  for (const key of ENV_PRIORITY) {
+    const value = import.meta.env[key] || process.env[key]
+    if (value && typeof value === 'string' && value.trim()) {
+      console.log(`[API] Using ${key}: ${value}`)
+      return value.trim()
+    }
+  }
   
-  // Core functionality
-  RISK_PREDICT: `${API_URL}/api/risk/predict`,
-  STABILITY_CURRENT: `${API_URL}/api/stability/current`,
+  // Check window object (for inline script configuration)
+  if (typeof window !== 'undefined') {
+    const windowUrl = window.NEXT_PUBLIC_API_URL || window.VITE_API_URL || window.REACT_APP_API_URL
+    if (windowUrl) {
+      console.log(`[API] Using window config: ${windowUrl}`)
+      return windowUrl
+    }
+  }
   
-  // Documentation
-  DOCS: `${API_URL}/docs`
-};
+  // Default fallback
+  const defaultUrl = 'http://127.0.0.1:8000'
+  console.log(`[API] Using default URL: ${defaultUrl}`)
+  return defaultUrl
+}
 
-// WebSocket endpoints
-export const WS_ENDPOINTS = {
-  GENERAL: `${WS_URL}/ws`,
-  RISK_STREAM: `${WS_URL}/ws/risk-stream`,
-  STABILITY_STREAM: `${WS_URL}/ws/stability-stream`,
-  ACTIONS_STREAM: `${WS_URL}/ws/actions-stream`,
-  TIMELINE_STREAM: `${WS_URL}/ws/timeline-stream`
-};
+// Build WebSocket URL from API URL
+function getWsUrl() {
+  const apiUrl = getApiUrl()
+  return apiUrl.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:')
+}
 
-// Configuration
-export const CONFIG = {
-  API_URL,
-  WS_URL,
-  RECONNECT_INTERVAL: 5000, // 5 seconds
-  CONNECTION_TIMEOUT: 10000, // 10 seconds
-  MAX_RECONNECT_ATTEMPTS: 5,
-  UPDATE_INTERVAL: 5000, // 5 seconds for polling fallback
-  HEALTH_CHECK_INTERVAL: 5000 // 5 seconds
-};
+export const API_BASE = getApiUrl()
+export const WS_URL = getWsUrl()
 
-// Export default API URL for backward compatibility
-export default API_URL;
+// Log configuration on load
+console.log('═'.repeat(50))
+console.log('[API] PRALAYA-NET Frontend Configuration')
+console.log('═'.repeat(50))
+console.log(`[API] Mode: ${import.meta.env.MODE || 'unknown'}`)
+console.log(`[API] API Base URL: ${API_BASE}`)
+console.log(`[API] WebSocket URL: ${WS_URL}`)
+console.log('═'.repeat(50))
+
+// Export for use in other modules
+export default API_BASE
+

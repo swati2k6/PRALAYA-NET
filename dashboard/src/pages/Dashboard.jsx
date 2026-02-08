@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
-import MapView from "../components/MapView";
-import ControlPanel from "../components/ControlPanel";
-import StatusPanel from "../components/StatusPanel";
-import IntelligenceFeed from "../components/IntelligenceFeed";
-import { checkBackendHealth, API_BASE, connectWebSocket } from "../services/api";
-import "../index.css";
+import { useState, useEffect } from "react"
+import MapView from "../components/MapView"
+import ControlPanel from "../components/ControlPanel"
+import StatusPanel from "../components/StatusPanel"
+import IntelligenceFeed from "../components/IntelligenceFeed"
+import { checkBackendHealth, fetchSystemStatus, fetchStabilityIndex } from "../services/api"
+import "../index.css"
 
 // Mock data generators for fallback when backend offline
 const generateMockStabilityData = () => ({
@@ -20,7 +20,7 @@ const generateMockStabilityData = () => ({
     trend: "stable",
     timestamp: new Date().toISOString()
   }
-});
+})
 
 const generateMockAlerts = () => [
   {
@@ -32,7 +32,7 @@ const generateMockAlerts = () => [
     progress: 1.0,
     timestamp: new Date().toISOString()
   }
-];
+]
 
 const generateMockTimeline = () => [
   {
@@ -43,104 +43,92 @@ const generateMockTimeline = () => [
     location: "Global",
     timestamp: new Date().toISOString()
   }
-];
+]
 
 const Dashboard = () => {
-  const [systemStatus, setSystemStatus] = useState(null);
-  const [backendOnline, setBackendOnline] = useState(false);
-  const [connectionError, setConnectionError] = useState(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [mobileRightPanelOpen, setMobileRightPanelOpen] = useState(false);
+  const [systemStatus, setSystemStatus] = useState(null)
+  const [backendOnline, setBackendOnline] = useState(false)
+  const [connectionError, setConnectionError] = useState(null)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [mobileRightPanelOpen, setMobileRightPanelOpen] = useState(false)
+  const [apiUrl, setApiUrl] = useState('http://127.0.0.1:8000')
+
+  // Initialize API URL from environment
+  useEffect(() => {
+    // Try to get from environment
+    const envUrl = import.meta.env.VITE_API_URL || import.meta.env.NEXT_PUBLIC_API_URL
+    if (envUrl) {
+      setApiUrl(envUrl)
+      console.log('[Dashboard] Using API URL from env:', envUrl)
+    }
+  }, [])
 
   // Close mobile menu when screen resizes to tablet+
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 768) {
-        setMobileMenuOpen(false);
-        setMobileRightPanelOpen(false);
+        setMobileMenuOpen(false)
+        setMobileRightPanelOpen(false)
       }
-    };
+    }
 
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
 
   // Check backend health on mount
   useEffect(() => {
     const initBackend = async () => {
       try {
-        const isHealthy = await checkBackendHealth();
-        setBackendOnline(isHealthy);
+        console.log('[Dashboard] Checking backend health...')
+        const isHealthy = await checkBackendHealth()
+        setBackendOnline(isHealthy)
 
         if (!isHealthy) {
-          setConnectionError("Backend offline - waiting for connection...");
-          console.error("[Dashboard] Backend is not responding");
+          setConnectionError("Backend offline - using demo mode")
+          console.warn("[Dashboard] Backend is not responding, using demo data")
         } else {
-          setConnectionError(null);
-          console.log("[Dashboard] Backend is online");
+          setConnectionError(null)
+          console.log("[Dashboard] Backend is online")
         }
       } catch (error) {
-        console.error("[Dashboard] Failed to initialize backend:", error);
-        setBackendOnline(false);
-        setConnectionError(error.message);
+        console.error("[Dashboard] Failed to initialize backend:", error)
+        setBackendOnline(false)
+        setConnectionError(error.message)
       }
-    };
+    }
 
-    initBackend();
+    initBackend()
 
     // Check backend health every 30 seconds
-    const healthCheckInterval = setInterval(initBackend, 30000);
-    return () => clearInterval(healthCheckInterval);
-  }, []);
+    const healthCheckInterval = setInterval(initBackend, 30000)
+    return () => clearInterval(healthCheckInterval)
+  }, [])
 
-  const [predictions, setPredictions] = useState(null);
-
-  // Initialize WebSockets
+  // Fetch system status when backend is online
   useEffect(() => {
-    const socket = connectWebSocket((payload) => {
-      console.log("[WS] Received Event:", payload);
-      if (payload.type === "DISASTER_DETECTED") {
-        setConnectionError(null);
-        // Refresh status when a new disaster is detected
-        fetchStatus();
-      }
-      if (payload.type === "PREDICTION_UPDATE") {
-        setPredictions(payload.data);
-      }
-    });
+    if (!backendOnline) return
 
-    return () => socket.close();
-  }, []);
-
-  // Fetch initial status
-  const fetchStatus = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/api/trigger/status`);
-      const data = await response.json();
-      setSystemStatus(data);
-      if (data.cascading_analysis?.next_failure_prediction) {
-        setPredictions(data.cascading_analysis.next_failure_prediction);
+    const fetchStatus = async () => {
+      try {
+        const data = await fetchSystemStatus()
+        setSystemStatus(data)
+        setConnectionError(null)
+      } catch (error) {
+        console.error("[Dashboard] Error fetching system status:", error.message)
+        setBackendOnline(false)
+        setConnectionError("Failed to fetch system status")
       }
-      setBackendOnline(true);
-      setConnectionError(null);
-    } catch (error) {
-      console.error("[Dashboard] Error fetching system status:", error.message);
-      setBackendOnline(false);
-      setConnectionError("Failed to fetch system status - backend unreachable");
     }
-  };
 
-  useEffect(() => {
-    if (backendOnline) {
-      fetchStatus();
-      const interval = setInterval(fetchStatus, 10000); // Polling as backup every 10s
-      return () => clearInterval(interval);
-    }
-  }, [backendOnline]);
+    fetchStatus()
+    const interval = setInterval(fetchStatus, 10000) // Polling as backup every 10s
+    return () => clearInterval(interval)
+  }, [backendOnline])
 
   // Automatic refresh every 5 seconds for stability index, alerts, and timeline
   useEffect(() => {
-    const refreshInterval = setInterval(() => {
+    const refreshInterval = setInterval(async () => {
       if (!backendOnline) {
         // Use mock data when backend offline
         setSystemStatus({
@@ -148,15 +136,21 @@ const Dashboard = () => {
           alerts: generateMockAlerts(),
           timeline: generateMockTimeline(),
           demo_mode: true
-        });
+        })
       } else {
         // Fetch real data when backend online
-        fetchStatus();
+        try {
+          const data = await fetchSystemStatus()
+          setSystemStatus(data)
+        } catch (error) {
+          console.error("[Dashboard] Refresh error:", error)
+          setBackendOnline(false)
+        }
       }
-    }, 5000); // 5 seconds
+    }, 5000) // 5 seconds
 
-    return () => clearInterval(refreshInterval);
-  }, [backendOnline]);
+    return () => clearInterval(refreshInterval)
+  }, [backendOnline])
 
   return (
     <div className="command-center">
@@ -167,24 +161,29 @@ const Dashboard = () => {
         </div>
 
         <div className="header-right">
-
-          {/* Backend Status Indicator */}
+          {/* Connection Status */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '11px'
+          }}>
+            <span style={{
+              width: '10px',
+              height: '10px',
+              borderRadius: '50%',
+              backgroundColor: backendOnline ? '#00ff00' : '#ff4444',
+              display: 'inline-block'
+            }}></span>
+            <span className="backend-label">Backend:</span>
+            {backendOnline ? "ONLINE" : "OFFLINE"}
+          </div>
           
           <div className="mode-indicator">
-            <span style={{ marginRight: "15px", display: "flex", alignItems: "center", gap: "5px", fontSize: "inherit" }}>
-              <span style={{
-                width: "10px",
-                height: "10px",
-                borderRadius: "50%",
-                backgroundColor: backendOnline ? "#00ff00" : "#ff4444",
-                display: "inline-block"
-              }}></span>
-              <span style={{ display: "none", "@media (min-width: 640px)": { display: "inline" } }}>Backend:</span>
-              {backendOnline ? "ONLINE" : "OFFLINE"}
-            </span>
-            <span className="mode-label">SIMULATION MODE</span>
-            <span className="mode-status">LIVE DATA READY</span>
+            <span className="mode-label">MODE</span>
+            <span className="mode-status">{backendOnline ? "LIVE DATA" : "SIMULATION"}</span>
           </div>
+          
           <div className="timestamp">
             {new Date().toLocaleString('en-US', {
               hour12: false,
@@ -228,10 +227,24 @@ const Dashboard = () => {
         <div
           className="mobile-overlay active"
           onClick={() => {
-            setMobileMenuOpen(false);
-            setMobileRightPanelOpen(false);
+            setMobileMenuOpen(false)
+            setMobileRightPanelOpen(false)
           }}
         />
+      )}
+
+      {/* Connection Error Banner */}
+      {connectionError && !backendOnline && (
+        <div style={{
+          padding: '8px 20px',
+          background: 'rgba(196, 90, 90, 0.2)',
+          borderBottom: '1px solid rgba(196, 90, 90, 0.3)',
+          fontSize: '12px',
+          color: '#c45a5a',
+          textAlign: 'center'
+        }}>
+          ⚠️ {connectionError} - Running in demo mode with simulated data
+        </div>
       )}
 
       <div className="command-grid">
@@ -243,7 +256,7 @@ const Dashboard = () => {
 
         {/* CENTER PANEL - Geospatial Map */}
         <main className="panel-center">
-          <MapView />
+          <MapView apiUrl={apiUrl} />
         </main>
 
         {/* RIGHT PANEL - Intelligence Feed */}
@@ -254,16 +267,28 @@ const Dashboard = () => {
 
       <footer className="command-footer">
         <div className="footer-left">
-          <span>System Status: OPERATIONAL</span>
-          <span className="footer-separator" style={{ display: "none" }}>|</span>
-          <span style={{ display: "none" }}>Version 1.0.0</span>
+          <span>System Status: {backendOnline ? "OPERATIONAL" : "DEMO MODE"}</span>
+          <span className="footer-separator">|</span>
+          <span>Version 1.0.0</span>
         </div>
         <div className="footer-right">
           <span style={{ fontSize: "11px" }}>NDMA / ISRO Compatible Architecture</span>
         </div>
       </footer>
-    </div>
-  );
-};
 
-export default Dashboard;
+      <style>{`
+        .backend-label {
+          display: none;
+        }
+        @media (min-width: 640px) {
+          .backend-label {
+            display: inline;
+          }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+export default Dashboard
+
