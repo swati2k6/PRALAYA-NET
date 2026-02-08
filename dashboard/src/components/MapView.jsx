@@ -145,11 +145,11 @@ const MapView = ({ apiUrl = 'http://127.0.0.1:8000' }) => {
   }
 
   return (
-    <div className="map-container" style={{ 
-      position: 'relative', 
-      height: '100%', 
+    <div className="map-container" style={{
+      position: 'relative',
+      height: '100%',
       width: '100%',
-      background: '#1a1d29'
+      background: '#f0f0f0' // Light background to prevent black interface if map fails to load
     }}>
       {/* Map Header */}
       <div className="map-header" style={{
@@ -176,7 +176,7 @@ const MapView = ({ apiUrl = 'http://127.0.0.1:8000' }) => {
         }}>
           🗺️ Geospatial Command Map
         </h2>
-        
+
         <div style={{
           display: 'flex',
           gap: '12px',
@@ -216,15 +216,17 @@ const MapView = ({ apiUrl = 'http://127.0.0.1:8000' }) => {
         top: '80px',
         left: '12px',
         zIndex: 999,
-        background: 'rgba(26, 29, 41, 0.95)',
-        borderRadius: '8px',
+        background: 'rgba(26, 29, 41, 0.8)',
+        backdropFilter: 'blur(10px)',
+        borderRadius: '12px',
         padding: '12px 16px',
-        border: '1px solid #3a3d4a',
-        pointerEvents: 'auto'
+        border: '1px solid rgba(74, 144, 226, 0.2)',
+        pointerEvents: 'auto',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
       }}>
-        <label className="toggle-label" style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
+        <label className="toggle-label" style={{
+          display: 'flex',
+          alignItems: 'center',
           gap: '10px',
           cursor: 'pointer'
         }}>
@@ -232,25 +234,26 @@ const MapView = ({ apiUrl = 'http://127.0.0.1:8000' }) => {
             type="checkbox"
             checked={showIntelLayer}
             onChange={(e) => setShowIntelLayer(e.target.checked)}
-            style={{ 
-              width: '18px', 
-              height: '18px', 
+            style={{
+              width: '18px',
+              height: '18px',
               cursor: 'pointer',
               accentColor: '#4a90e2'
             }}
           />
           <div>
-            <span style={{ 
-              fontSize: '13px', 
-              fontWeight: '600', 
+            <span style={{
+              fontSize: '13px',
+              fontWeight: '600',
               color: '#e8e9ea',
-              display: 'block'
+              display: 'block',
+              textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)'
             }}>
               Infrastructure Intelligence
             </span>
-            <span style={{ 
-              fontSize: '10px', 
-              color: '#8a8d94' 
+            <span style={{
+              fontSize: '10px',
+              color: '#8a8d94'
             }}>
               Weather, Risk & Drone Conditions
             </span>
@@ -273,6 +276,11 @@ const MapView = ({ apiUrl = 'http://127.0.0.1:8000' }) => {
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          eventHandlers={{
+            tileerror: () => {
+              console.warn('[MapView] Tile loading error - map may appear with missing tiles')
+            }
+          }}
         />
 
         <MapEvents />

@@ -119,7 +119,10 @@ const Navigation = () => {
             background: 'rgba(0, 0, 0, 0.3)',
             padding: '6px 12px',
             borderRadius: '12px',
-            border: '1px solid rgba(255, 255, 255, 0.08)'
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            overflowX: 'auto',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none'
           }}>
             {navLinks.map((link) => (
               <Link
@@ -129,26 +132,28 @@ const Navigation = () => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
-                  padding: link.highlight 
-                    ? '10px 18px' 
+                  padding: link.highlight
+                    ? '10px 18px'
                     : '10px 14px',
                   borderRadius: '8px',
                   textDecoration: 'none',
                   fontSize: '13px',
                   fontWeight: '600',
                   color: isActive(link.path) ? '#ffffff' : '#9ca3af',
-                  background: isActive(link.path) 
-                    ? (link.highlight 
-                        ? 'linear-gradient(90deg, #4a90e2, #3b82f6)' 
+                  background: isActive(link.path)
+                    ? (link.highlight
+                        ? 'linear-gradient(90deg, #4a90e2, #3b82f6)'
                         : 'rgba(74, 144, 226, 0.15)')
                     : 'transparent',
-                  border: isActive(link.path) 
+                  border: isActive(link.path)
                     ? (link.highlight ? 'none' : '1px solid rgba(74, 144, 226, 0.3)')
                     : '1px solid transparent',
                   transition: 'all 0.2s ease',
-                  boxShadow: isActive(link.path) && link.highlight 
-                    ? '0 4px 15px rgba(59, 130, 246, 0.4)' 
-                    : 'none'
+                  boxShadow: isActive(link.path) && link.highlight
+                    ? '0 4px 15px rgba(59, 130, 246, 0.4)'
+                    : 'none',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0
                 }}
               >
                 <span style={{

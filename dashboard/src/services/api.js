@@ -4,7 +4,7 @@
  * Enhanced with drone fleet operations
  */
 
-import { API_BASE, WS_URL } from '../config/api'
+import { API_BASE, WS_URL, updateBackendStatus, getBackendStatus } from '../config/api'
 
 console.log('[API Service] Initializing with base URL:', API_BASE)
 
@@ -25,6 +25,7 @@ export async function checkBackendStatus() {
     if (response.ok) {
       backendReachable = true
       backendErrorMessage = ''
+      updateBackendStatus(true, null);
       console.log('[API] Backend is reachable')
       return true
     } else {
@@ -33,18 +34,13 @@ export async function checkBackendStatus() {
   } catch (error) {
     backendReachable = false
     backendErrorMessage = error.message
+    updateBackendStatus(false, error.message);
     console.error('[API] Backend unreachable:', error.message)
     return false
   }
 }
 
-// Get backend status
-export function getBackendStatus() {
-  return {
-    reachable: backendReachable,
-    error: backendErrorMessage
-  }
-}
+
 
 // ============== Health Check ==============
 
@@ -179,17 +175,21 @@ export async function fetchSystemStatus() {
   try {
     const response = await fetch(`${API_BASE}/api/system-status`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(5000) // 5 second timeout
     })
     
     if (!response.ok) {
       throw new Error(`System status API failed: ${response.status}`)
     }
     
-    return await response.json()
+    const data = await response.json();
+    updateBackendStatus(true, null); // Mark as reachable on successful response
+    return data;
   } catch (error) {
-    console.error('[API] System status error:', error)
-    throw error
+    console.error('[API] System status error:', error);
+    updateBackendStatus(false, error.message);
+    throw error;
   }
 }
 
@@ -222,17 +222,21 @@ export async function getDroneStatus() {
   try {
     const response = await fetch(`${API_BASE}/api/drones/fleet-status`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(5000) // 5 second timeout
     })
     
     if (!response.ok) {
       throw new Error(`Drone fleet status API failed: ${response.status}`)
     }
     
-    return await response.json()
+    const data = await response.json();
+    updateBackendStatus(true, null); // Mark as reachable on successful response
+    return data;
   } catch (error) {
-    console.error('[API] Drone status error:', error)
-    throw error
+    console.error('[API] Drone status error:', error);
+    updateBackendStatus(false, error.message);
+    throw error;
   }
 }
 
@@ -578,7 +582,29 @@ export async function clearDisasters() {
 
 // Alias for compatibility
 export const getSystemStatus = fetchSystemStatus
-export const getDroneTelemetry = getDroneStatus
+export async function getDroneTelemetry(droneId) {
+  try {
+    // Use the specific drone endpoint if droneId is provided
+    const url = droneId ? `${API_BASE}/api/drones/${droneId}` : `${API_BASE}/api/drones/fleet-status`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(5000) // 5 second timeout
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Drone telemetry API failed: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    updateBackendStatus(true, null); // Mark as reachable on successful response
+    return data;
+  } catch (error) {
+    console.error('[API] Drone telemetry error:', error);
+    updateBackendStatus(false, error.message);
+    throw error;
+  }
+}
 
 // Export API_BASE for use in components
 export { API_BASE }

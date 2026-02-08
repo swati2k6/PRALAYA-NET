@@ -401,12 +401,12 @@ const DroneView = () => {
                     }}
                   >
                     {/* Video Feed */}
-                    {selectedDrone === index ? (
+                    {streamActive ? (
                       <video
-                        ref={videoRef}
                         autoPlay
                         playsInline
                         muted
+                        srcObject={streamRef.current}
                         style={{
                           width: '100%',
                           height: '100%',
@@ -423,15 +423,15 @@ const DroneView = () => {
                         background: 'linear-gradient(135deg, #1a1d29 0%, #232633 100%)'
                       }}>
                         <div style={{ textAlign: 'center' }}>
-                          <div style={{ 
-                            fontSize: '24px', 
+                          <div style={{
+                            fontSize: '24px',
                             marginBottom: '8px',
                             opacity: 0.5
                           }}>
                             📷
                           </div>
                           <div style={{ fontSize: '10px', color: '#8a8d94' }}>
-                            Mirroring DRONE-001
+                            Camera Offline
                           </div>
                         </div>
                       </div>

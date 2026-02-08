@@ -1,29 +1,30 @@
 import { useEffect, useState } from "react";
 import { getSystemStatus, getDroneStatus, getDroneTelemetry } from "../services/api";
+import { getBackendStatus } from "../config/api";
 
 const IntelligenceFeed = ({ systemStatus }) => {
   const [status, setStatus] = useState(systemStatus);
   const [drones, setDrones] = useState([]);
   const [alerts, setAlerts] = useState([]);
+  const [connectionLost, setConnectionLost] = useState(false);
 
   useEffect(() => {
+    let intervalId;
+    
     const fetchData = async () => {
       try {
-        const [statusData, droneData] = await Promise.all([
-          getSystemStatus().catch(err => {
-            console.error("Error fetching system status:", err);
-            return null;
-          }),
-          getDroneStatus().catch(err => {
-            console.error("Error fetching drone status:", err);
-            return { drones: [] };
-          })
+        const [statusResult, droneResult] = await Promise.allSettled([
+          getSystemStatus(),
+          getDroneStatus()
         ]);
 
-        if (statusData) {
-          setStatus(statusData);
+        // Handle system status result
+        if (statusResult.status === 'fulfilled') {
+          setStatus(statusResult.value);
+          setConnectionLost(false); // Connection is good if we got data
 
           // Fetch latest decision for alerts
+          const statusData = statusResult.value;
           if (statusData.active_disasters && statusData.active_disasters.length > 0) {
             // Alerts would come from the decision engine
             setAlerts([
@@ -38,19 +39,43 @@ const IntelligenceFeed = ({ systemStatus }) => {
           } else {
             setAlerts([]);
           }
+        } else {
+          console.error("Error fetching system status:", statusResult.reason);
+          // Don't update status if fetch failed
         }
 
-        if (droneData) {
-          setDrones(droneData.drones || []);
+        // Handle drone status result
+        if (droneResult.status === 'fulfilled') {
+          setDrones(droneResult.value.drones || []);
+        } else {
+          console.error("Error fetching drone status:", droneResult.reason);
+          // Don't update drones if fetch failed
+        }
+        
+        // Check backend status after fetch
+        const backendStatus = getBackendStatus();
+        if (!backendStatus.reachable) {
+          setConnectionLost(true);
         }
       } catch (error) {
         console.error("Error fetching intelligence data:", error);
+        setConnectionLost(true);
       }
     };
 
+    // Initial fetch
     fetchData();
-    const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
+    
+    // Set up interval for periodic fetch
+    intervalId = setInterval(() => {
+      fetchData();
+    }, 5000);
+    
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
   }, []);
 
   const getAlertSeverity = (severity) => {
@@ -197,6 +222,8 @@ const DroneCard = ({ drone }) => {
   const [telemetry, setTelemetry] = useState(null);
 
   useEffect(() => {
+    let intervalId;
+    
     if (!drone.id) return;
 
     const fetchTelemetry = async () => {
@@ -210,8 +237,12 @@ const DroneCard = ({ drone }) => {
     };
 
     fetchTelemetry();
-    const interval = setInterval(fetchTelemetry, 2000);
-    return () => clearInterval(interval);
+    intervalId = setInterval(fetchTelemetry, 2000);
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
   }, [drone.id]);
 
   const getNavigationMode = () => {

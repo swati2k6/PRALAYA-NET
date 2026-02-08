@@ -17,6 +17,13 @@ const ENV_PRIORITY = [
   'VITE_API_URL'
 ]
 
+// Global backend status tracking
+let backendStatus = {
+  reachable: true,
+  lastCheck: null,
+  error: null
+};
+
 // Get the best available API URL
 function getApiUrl() {
   // Check environment variables
@@ -41,6 +48,20 @@ function getApiUrl() {
   const defaultUrl = 'http://127.0.0.1:8000'
   console.log(`[API] Using default URL: ${defaultUrl}`)
   return defaultUrl
+}
+
+// Update backend status
+export function updateBackendStatus(reachable, error = null) {
+  backendStatus = {
+    reachable,
+    lastCheck: new Date(),
+    error
+  };
+}
+
+// Get backend status
+export function getBackendStatus() {
+  return { ...backendStatus };
 }
 
 // Build WebSocket URL from API URL

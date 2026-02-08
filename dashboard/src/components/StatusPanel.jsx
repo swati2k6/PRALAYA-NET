@@ -1,25 +1,65 @@
 import { useEffect, useState } from "react";
 import { getSystemStatus } from "../services/api";
+import { getBackendStatus } from "../config/api";
 
 const StatusPanel = ({ systemStatus }) => {
   const [status, setStatus] = useState(systemStatus);
+  const [connectionLost, setConnectionLost] = useState(false);
 
   useEffect(() => {
+    let intervalId;
+    
     const fetchStatus = async () => {
       try {
         const data = await getSystemStatus();
         setStatus(data);
+        setConnectionLost(false); // Connection is good if we got data
       } catch (error) {
         console.error("Error fetching status:", error);
         // Don't show error to user, just log it
+        setConnectionLost(true);
+      }
+      
+      // Always check backend status
+      const backendStatus = getBackendStatus();
+      if (!backendStatus.reachable) {
+        setConnectionLost(true);
       }
     };
 
+    // Initial fetch
     fetchStatus();
-    const interval = setInterval(fetchStatus, 5000);
-    return () => clearInterval(interval);
+    
+    // Set up interval for periodic fetch
+    intervalId = setInterval(() => {
+      fetchStatus();
+    }, 5000);
+    
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
   }, []);
 
+  if (connectionLost) {
+    return (
+      <div className="panel-section">
+        <div className="section-header">
+          <span className="section-title">System Status</span>
+          <span className="section-badge critical">CONNECTION LOST</span>
+        </div>
+        <div className="empty-state">
+          <div className="status-indicator">
+            <div className="status-dot critical"></div>
+            <span>Backend Offline</span>
+          </div>
+          <div className="retry-info">Retrying connection every 5 seconds...</div>
+        </div>
+      </div>
+    );
+  }
+  
   if (!status) {
     return (
       <div className="panel-section">

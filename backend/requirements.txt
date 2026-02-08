@@ -14,9 +14,9 @@ requests==2.31.0
 # Configuration
 python-dotenv==1.0.0
 
-# Data Processing
+# Data Processing (Updated for Python 3.12 compatibility)
 numpy==1.26.4
-pandas==1.5.3
+pandas==2.1.4
 
 # Machine Learning (Lightweight)
 scikit-learn==1.4.0
