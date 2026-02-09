@@ -1,3 +1,4 @@
+This project was developed as a team during a hackathon.
 # 🚀 PRALAYA-NET: Autonomous Disaster Response & National Infrastructure Resilience Platform
 
 > **An AI-powered autonomous disaster response system with real-time risk assessment, multi-agent coordination, and closed-loop stabilization for national-scale infrastructure protection.**
